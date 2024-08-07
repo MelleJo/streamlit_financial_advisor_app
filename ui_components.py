@@ -21,40 +21,45 @@ class UIComponents:
                 return audio_file
         return None
 
-    def display_and_refine_fields(self, fields, gpt_service):
+    def display_and_refine_adviesmodules(self, adviesmodules, gpt_service):
         st.subheader("Analyseresultaten")
         
-        if fields is None or len(fields) == 0:
-            st.warning("Er zijn geen velden om weer te geven. Probeer de analyse opnieuw uit te voeren.")
+        if adviesmodules is None or len(adviesmodules) == 0:
+            st.warning("Er zijn geen adviesmodules om weer te geven. Probeer de analyse opnieuw uit te voeren.")
             return None
 
-        final_fields = fields.copy()
+        final_adviesmodules = adviesmodules.copy()
         
-        for field_name, content in fields.items():
-            st.write(f"**{field_name}:**")
-            new_content = st.text_area(f"Bewerk {field_name}", value=content, height=150, key=field_name)
-            final_fields[field_name] = new_content
+        for module_name, content in adviesmodules.items():
+            st.write(f"**{module_name}:**")
+            new_content = st.text_area(f"Bewerk {module_name}", value=content, height=300, key=module_name)
+            final_adviesmodules[module_name] = new_content
 
         feedback = st.text_area("Geef aanvullende feedback voor verfijning (optioneel)")
         
         if st.button("Verfijn Analyse"):
-            transcript = "\n".join(final_fields.values())
-            refined_fields = gpt_service.analyze_transcript(transcript, feedback)
-            if refined_fields:
-                final_fields = refined_fields
+            transcript = "\n".join([f"<{module_name}>\n{content}\n</{module_name}>" for module_name, content in final_adviesmodules.items()])
+            refined_adviesmodules = gpt_service.analyze_transcript(transcript)
+            if refined_adviesmodules:
+                final_adviesmodules = refined_adviesmodules
                 st.success("Analyse verfijnd op basis van feedback!")
             else:
                 st.error("Er is een fout opgetreden bij het verfijnen van de analyse. Probeer het opnieuw of neem contact op met de ondersteuning.")
             
-        return final_fields
+        return final_adviesmodules
 
-    def add_copy_buttons(self, fields):
-        if fields is None or len(fields) == 0:
+    def add_copy_buttons(self, adviesmodules):
+        if adviesmodules is None or len(adviesmodules) == 0:
             return
 
         st.subheader("Kopieer Resultaten")
         
-        for field_name, content in fields.items():
-            if st.button(f"Kopieer {field_name}"):
+        for module_name, content in adviesmodules.items():
+            if st.button(f"Kopieer {module_name}"):
                 pyperclip.copy(content)
-                st.success(f"{field_name} gekopieerd naar klembord!")
+                st.success(f"{module_name} gekopieerd naar klembord!")
+
+        if st.button("Kopieer Alle Adviesmodules"):
+            all_content = "\n\n".join([f"{module_name}:\n{content}" for module_name, content in adviesmodules.items()])
+            pyperclip.copy(all_content)
+            st.success("Alle adviesmodules gekopieerd naar klembord!")

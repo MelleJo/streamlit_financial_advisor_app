@@ -45,14 +45,14 @@ def main():
 
     if transcript:
         # Stap 3: Transcript analyseren met GPT
-        fields = gpt_service.analyze_transcript(transcript)
+        adviesmodules = gpt_service.analyze_transcript(transcript)
 
-        if fields is not None:
+        if adviesmodules is not None:
             # Stap 4: Resultaten weergeven en feedback krijgen
-            final_fields = ui_components.display_and_refine_fields(fields, gpt_service)
+            final_adviesmodules = ui_components.display_and_refine_adviesmodules(adviesmodules, gpt_service)
 
-            # Stap 5: Kopieerknopppen voor elk veld
-            ui_components.add_copy_buttons(final_fields)
+            # Stap 5: Kopieerknopppen voor elk adviesmodule
+            ui_components.add_copy_buttons(final_adviesmodules)
         else:
             st.error("Er is een fout opgetreden bij het analyseren van de transcript. Probeer het opnieuw of neem contact op met de ondersteuning.")
 
