@@ -4,13 +4,18 @@ import tempfile
 import os
 
 class TranscriptionService:
-    def transcribe(self, audio_data):
+    def transcribe(self, audio_input):
         st.subheader("Transcribing Audio")
         with st.spinner("Transcribing..."):
             try:
                 # Create a temporary file
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_audio_file:
-                    temp_audio_file.write(audio_data)
+                    if isinstance(audio_input, bytes):
+                        # If audio_input is bytes (from recorded audio)
+                        temp_audio_file.write(audio_input)
+                    else:
+                        # If audio_input is an UploadedFile object
+                        temp_audio_file.write(audio_input.read())
                     temp_audio_file.flush()
 
                     # Use the temporary file for transcription

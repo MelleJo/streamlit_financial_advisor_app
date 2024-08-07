@@ -22,13 +22,28 @@ def main():
     gpt_service = GPTService(api_key)
     ui_components = UIComponents()
 
-    # Stap 1: Audio opnemen
-    audio_data = audio_service.record_audio()
+    # Input method selection
+    input_method = st.radio("Kies een invoermethode:", ("Typen/Plakken", "Spreken", "Audio bestand uploaden"))
 
-    if audio_data:
-        # Stap 2: Audio transcriberen
-        transcript = transcription_service.transcribe(audio_data)
+    transcript = None
 
+    if input_method == "Typen/Plakken":
+        # Stap 1: Tekst invoeren
+        transcript = ui_components.text_input()
+    elif input_method == "Spreken":
+        # Stap 1: Audio opnemen
+        audio_data = audio_service.record_audio()
+        if audio_data:
+            # Stap 2: Audio transcriberen
+            transcript = transcription_service.transcribe(audio_data)
+    elif input_method == "Audio bestand uploaden":
+        # Stap 1: Audio bestand uploaden
+        audio_file = ui_components.upload_audio()
+        if audio_file:
+            # Stap 2: Audio transcriberen
+            transcript = transcription_service.transcribe(audio_file)
+
+    if transcript:
         # Stap 3: Transcript analyseren met GPT
         fields = gpt_service.analyze_transcript(transcript)
 

@@ -2,6 +2,25 @@ import streamlit as st
 import pyperclip
 
 class UIComponents:
+    def text_input(self):
+        st.subheader("Voer uw tekst in")
+        text = st.text_area("Typ of plak uw tekst hier", height=300)
+        if st.button("Analyseer Tekst"):
+            if text.strip():
+                return text
+            else:
+                st.warning("Voer alstublieft tekst in voordat u op Analyseer drukt.")
+        return None
+
+    def upload_audio(self):
+        st.subheader("Upload audiobestand")
+        audio_file = st.file_uploader("Kies een audiobestand", type=["wav", "mp3", "m4a"])
+        if audio_file is not None:
+            st.audio(audio_file)
+            if st.button("Transcribeer en Analyseer"):
+                return audio_file
+        return None
+
     def display_and_refine_fields(self, fields, gpt_service):
         st.subheader("Analyseresultaten")
         
