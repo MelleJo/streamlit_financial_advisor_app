@@ -3,12 +3,11 @@ from audio_service import AudioService
 from transcription_service import TranscriptionService
 from gpt_service import GPTService
 from ui_components import UIComponents
-import os
 
 def load_openai_api_key():
-    api_key = os.getenv("OPENAI_API_KEY")
+    api_key = st.secrets["OPENAI_API_KEY"]
     if not api_key:
-        st.error("OpenAI API key not found. Please set the OPENAI_API_KEY environment variable.")
+        st.error("OpenAI API key not found in Streamlit secrets. Please set the OPENAI_API_KEY in .streamlit/secrets.toml file.")
         st.stop()
     return api_key
 

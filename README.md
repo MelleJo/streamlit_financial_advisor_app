@@ -10,9 +10,12 @@ This project is an AI-powered mortgage assistant that uses speech recognition an
    pip install -r requirements.txt
    ```
 3. Set up your OpenAI API key:
-   - Copy the `.env.example` file and rename it to `.env`
-   - Replace `your_openai_api_key_here` with your actual OpenAI API key
-   - Alternatively, you can set the `OPENAI_API_KEY` environment variable directly in your system
+   - Create a `.streamlit/secrets.toml` file in the project root
+   - Add your OpenAI API key to this file like this:
+     ```toml
+     OPENAI_API_KEY = "your-api-key-here"
+     ```
+   - Replace `your-api-key-here` with your actual OpenAI API key
 
 ## Running the Application
 
@@ -36,7 +39,8 @@ streamlit run main.py
 - `transcription_service.py`: Handles speech-to-text transcription
 - `gpt_service.py`: Handles AI-powered analysis using OpenAI's GPT model
 - `ui_components.py`: Contains UI components for the Streamlit app
+- `.streamlit/secrets.toml`: Contains sensitive information like API keys (not version controlled)
 
 ## Security Note
 
-Never commit your `.env` file or expose your API keys in your code. The `.env` file is included in `.gitignore` to prevent accidental commits.
+Never commit your `.streamlit/secrets.toml` file or expose your API keys in your code. The `.streamlit/secrets.toml` file should be added to your `.gitignore` to prevent accidental commits.
