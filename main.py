@@ -5,28 +5,28 @@ from gpt_service import GPTService
 from ui_components import UIComponents
 
 def main():
-    st.set_page_config(page_title="Financial Advisor Assistant", layout="wide")
-    st.title("Financial Advisor Assistant")
+    st.set_page_config(page_title="AI Hypotheek Assistent", layout="wide")
+    st.title("AI Hypotheek Assistent")
 
     audio_service = AudioService()
     transcription_service = TranscriptionService()
     gpt_service = GPTService()
     ui_components = UIComponents()
 
-    # Step 1: Record audio
+    # Stap 1: Audio opnemen
     audio_data = audio_service.record_audio()
 
     if audio_data:
-        # Step 2: Transcribe audio
+        # Stap 2: Audio transcriberen
         transcript = transcription_service.transcribe(audio_data)
 
-        # Step 3: Analyze transcript with GPT
+        # Stap 3: Transcript analyseren met GPT
         fields = gpt_service.analyze_transcript(transcript)
 
-        # Step 4: Display results and get feedback
+        # Stap 4: Resultaten weergeven en feedback krijgen
         final_fields = ui_components.display_and_refine_fields(fields, gpt_service)
 
-        # Step 5: Copy buttons for each field
+        # Stap 5: Kopieerknopppen voor elk veld
         ui_components.add_copy_buttons(final_fields)
 
 if __name__ == "__main__":
