@@ -5,6 +5,10 @@ class UIComponents:
     def display_and_refine_fields(self, fields, gpt_service):
         st.subheader("Analyseresultaten")
         
+        if fields is None or len(fields) == 0:
+            st.warning("Er zijn geen velden om weer te geven. Probeer de analyse opnieuw uit te voeren.")
+            return None
+
         final_fields = fields.copy()
         
         for field_name, content in fields.items():
@@ -20,10 +24,15 @@ class UIComponents:
             if refined_fields:
                 final_fields = refined_fields
                 st.success("Analyse verfijnd op basis van feedback!")
+            else:
+                st.error("Er is een fout opgetreden bij het verfijnen van de analyse. Probeer het opnieuw of neem contact op met de ondersteuning.")
             
         return final_fields
 
     def add_copy_buttons(self, fields):
+        if fields is None or len(fields) == 0:
+            return
+
         st.subheader("Kopieer Resultaten")
         
         for field_name, content in fields.items():
