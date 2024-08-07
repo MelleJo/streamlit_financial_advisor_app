@@ -3,14 +3,24 @@ from audio_service import AudioService
 from transcription_service import TranscriptionService
 from gpt_service import GPTService
 from ui_components import UIComponents
+import os
+
+def load_openai_api_key():
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        st.error("OpenAI API key not found. Please set the OPENAI_API_KEY environment variable.")
+        st.stop()
+    return api_key
 
 def main():
     st.set_page_config(page_title="AI Hypotheek Assistent", layout="wide")
     st.title("AI Hypotheek Assistent")
 
+    api_key = load_openai_api_key()
+
     audio_service = AudioService()
     transcription_service = TranscriptionService()
-    gpt_service = GPTService()
+    gpt_service = GPTService(api_key)
     ui_components = UIComponents()
 
     # Stap 1: Audio opnemen

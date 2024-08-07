@@ -1,31 +1,18 @@
-# Financial Advisor Assistant
+# AI Hypotheek Assistent
 
-This Streamlit application helps financial advisors transcribe and analyze their advisory notes using advanced AI technologies.
-
-## Features
-
-- Audio recording using streamlit-mic-recorder
-- Transcription of audio using OpenAI's Whisper API
-- Analysis of transcripts using GPT-4 via LangChain
-- Interactive UI for reviewing and refining analysis results
-- Easy copying of results to clipboard
+This project is an AI-powered mortgage assistant that uses speech recognition and natural language processing to help with mortgage applications.
 
 ## Setup
 
-1. Clone this repository:
-   ```
-   git clone https://github.com/yourusername/streamlit_financial_advisor_app.git
-   cd streamlit_financial_advisor_app
-   ```
-
-2. Install the required packages:
+1. Clone this repository
+2. Install the required dependencies:
    ```
    pip install -r requirements.txt
    ```
-
 3. Set up your OpenAI API key:
-   - Rename `.env.example` to `.env`
+   - Copy the `.env.example` file and rename it to `.env`
    - Replace `your_openai_api_key_here` with your actual OpenAI API key
+   - Alternatively, you can set the `OPENAI_API_KEY` environment variable directly in your system
 
 ## Running the Application
 
@@ -35,19 +22,21 @@ To run the application, use the following command:
 streamlit run main.py
 ```
 
-## Usage
+## Features
 
-1. Open the application in your web browser.
-2. Click the microphone button to start recording your advisory notes.
-3. Click the microphone button again to stop recording.
-4. The application will transcribe your audio and analyze it.
-5. Review the analysis results and provide feedback if necessary.
-6. Use the "Copy" buttons to easily copy the results to your clipboard.
+- Audio recording
+- Speech-to-text transcription
+- AI-powered analysis of mortgage application information
+- Interactive UI for reviewing and refining extracted information
 
-## Contributing
+## File Structure
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+- `main.py`: The main entry point of the application
+- `audio_service.py`: Handles audio recording
+- `transcription_service.py`: Handles speech-to-text transcription
+- `gpt_service.py`: Handles AI-powered analysis using OpenAI's GPT model
+- `ui_components.py`: Contains UI components for the Streamlit app
 
-## License
+## Security Note
 
-This project is licensed under the MIT License.
+Never commit your `.env` file or expose your API keys in your code. The `.env` file is included in `.gitignore` to prevent accidental commits.

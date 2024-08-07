@@ -2,10 +2,11 @@ import streamlit as st
 from langchain.llms import OpenAI
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
+import os
 
 class GPTService:
-    def __init__(self):
-        self.llm = OpenAI(model_name="gpt-4o", temperature=0.7)
+    def __init__(self, api_key):
+        self.llm = OpenAI(model_name="gpt-4", temperature=0.7, openai_api_key=api_key)
         self.prompt = PromptTemplate(
             input_variables=["transcript", "field_names", "feedback"],
             template="""
