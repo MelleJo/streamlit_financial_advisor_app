@@ -4,18 +4,14 @@ from transcription_service import TranscriptionService
 from gpt_service import GPTService
 from ui_components import UIComponents
 
-def load_openai_api_key():
-    api_key = st.secrets["OPENAI_API_KEY"]
-    if not api_key:
-        st.error("OpenAI API key not found in Streamlit secrets. Please set the OPENAI_API_KEY in .streamlit/secrets.toml file.")
-        st.stop()
-    return api_key
+
+
 
 def main():
     st.set_page_config(page_title="AI Hypotheek Assistent", layout="wide")
     st.title("AI Hypotheek Assistent")
 
-    api_key = load_openai_api_key()
+    api_key = st.secrets["OPENAI_API_KEY"]
 
     audio_service = AudioService()
     transcription_service = TranscriptionService()

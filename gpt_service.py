@@ -3,6 +3,8 @@ from langchain.chat_models import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 
+api_key = st.secrets["OPENAI_API_KEY"]
+
 class GPTService:
     def __init__(self, api_key):
         # Use the ChatOpenAI initialization with the API key
