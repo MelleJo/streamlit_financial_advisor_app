@@ -46,9 +46,10 @@ def render_text_input_screen(gpt_service):
     if st.button("Analyseer Transcript"):
         if transcript:
             st.session_state.transcript = transcript
-            st.session_state.page = "results"
             with st.spinner("Bezig met analyseren... dit kan even duren."):
                 st.session_state.result = gpt_service.analyze_transcript(transcript)
+            st.session_state.page = "results"
+            st.experimental_rerun()
         else:
             st.error("Voer een transcript in om te analyseren.")
 
@@ -60,15 +61,16 @@ def render_file_input_screen(gpt_service):
         if uploaded_file is not None:
             transcript = uploaded_file.read().decode("utf-8")
             st.session_state.transcript = transcript
-            st.session_state.page = "results"
             with st.spinner("Bezig met analyseren... dit kan even duren."):
                 st.session_state.result = gpt_service.analyze_transcript(transcript)
+            st.session_state.page = "results"
+            st.experimental_rerun()
         else:
             st.error("Upload een geldig bestand om te analyseren.")
 
 def render_result_screen():
     st.header("Analyse Resultaten")
-    result = st.session_state.result
+    result = st.session_state.get("result", None)
     if result:
         for section, content in result.items():
             st.subheader(section.replace("_", " ").capitalize())
@@ -78,6 +80,7 @@ def render_result_screen():
     
     if st.button("Terug naar Start"):
         st.session_state.page = "home"
+        st.experimental_rerun()
 
 def render_footer():
     st.markdown("""
