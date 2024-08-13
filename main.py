@@ -9,7 +9,7 @@ ui.apply_custom_css()
 ui.render_sidebar()
 
 # Initialize GPTService with your API key from Streamlit secrets
-api_key = st.secrets["openai"]["openai_api_key"]
+api_key = st.secrets["OPENAI_API_KEY"]
 gpt_service = GPTService(api_key=api_key)
 
 # Render Tabs (Main Content)
