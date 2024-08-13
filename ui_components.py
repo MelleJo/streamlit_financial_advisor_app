@@ -27,46 +27,57 @@ def apply_custom_css():
         </style>
     """, unsafe_allow_html=True)
 
-def render_sidebar():
-    st.sidebar.title("Hypotheek Assistent")
-    st.sidebar.write("Gebruik deze app om financiële adviezen te genereren op basis van transcripties.")
-    st.sidebar.write("Kies een sectie om te beginnen:")
+def render_home_screen():
+    st.title("Welkom bij de Hypotheek Assistent")
+    st.write("Kies het type invoer dat u wilt gebruiken:")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Handmatige invoer"):
+            st.session_state.page = "text_input"
+    with col2:
+        if st.button("Bestand uploaden"):
+            st.session_state.page = "file_input"
 
-def render_tabs(gpt_service):
-    tab1, tab2, tab3 = st.tabs(["📄 Analyseer Transcript", "📊 Resultaten", "⚙️ Instellingen"])
-
-    with tab1:
-        st.header("📄 Analyseer een Transcript")
-        st.write("Upload hier een transcript om het te analyseren en gedetailleerde adviesmodules te genereren.")
-
-        transcript = st.text_area("Voer het transcript in:")
-        if st.button("Analyseer Transcript"):
-            if transcript:
-                result = gpt_service.analyze_transcript(transcript)
-                st.session_state['result'] = result
-            else:
-                st.error("Voer een transcript in om te analyseren.")
-
-    with tab2:
-        st.header("📊 Analyse Resultaten")
-        st.write("Hier worden de resultaten van de analyse weergegeven.")
-
-        if 'result' in st.session_state:
-            result = st.session_state['result']
-            if result:
-                for section, content in result.items():
-                    with st.expander(section.replace("_", " ").capitalize()):
-                        st.markdown(content)
-            else:
-                st.write("Er zijn nog geen resultaten beschikbaar. Ga naar de tab 'Analyseer Transcript' om te beginnen.")
+def render_text_input_screen(gpt_service):
+    st.header("Handmatige Invoer")
+    transcript = st.text_area("Voer het transcript in:")
+    
+    if st.button("Analyseer Transcript"):
+        if transcript:
+            st.session_state.transcript = transcript
+            st.session_state.page = "results"
+            with st.spinner("Bezig met analyseren... dit kan even duren."):
+                st.session_state.result = gpt_service.analyze_transcript(transcript)
         else:
-            st.write("Er zijn nog geen resultaten beschikbaar. Ga naar de tab 'Analyseer Transcript' om te beginnen.")
+            st.error("Voer een transcript in om te analyseren.")
 
-    with tab3:
-        st.header("⚙️ Instellingen")
-        st.write("Configureer hier de instellingen van de app.")
-        st.selectbox("Kies een model", ["GPT-3.5", "GPT-4"])
-        st.slider("Kies de temperatuurinstelling voor het model:", 0.0, 1.0, 0.7)
+def render_file_input_screen(gpt_service):
+    st.header("Bestand Uploaden")
+    uploaded_file = st.file_uploader("Upload uw transcript bestand", type=["txt", "docx"])
+    
+    if st.button("Analyseer Transcript") and uploaded_file:
+        if uploaded_file is not None:
+            transcript = uploaded_file.read().decode("utf-8")
+            st.session_state.transcript = transcript
+            st.session_state.page = "results"
+            with st.spinner("Bezig met analyseren... dit kan even duren."):
+                st.session_state.result = gpt_service.analyze_transcript(transcript)
+        else:
+            st.error("Upload een geldig bestand om te analyseren.")
+
+def render_result_screen():
+    st.header("Analyse Resultaten")
+    result = st.session_state.result
+    if result:
+        for section, content in result.items():
+            st.subheader(section.replace("_", " ").capitalize())
+            st.markdown(content)
+    else:
+        st.write("Er zijn geen resultaten beschikbaar.")
+    
+    if st.button("Terug naar Start"):
+        st.session_state.page = "home"
 
 def render_footer():
     st.markdown("""
