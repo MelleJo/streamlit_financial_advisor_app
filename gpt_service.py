@@ -1,12 +1,13 @@
 import streamlit as st
-from langchain.llms import OpenAI
+from langchain.chat_models import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 import os
 
 class GPTService:
     def __init__(self, api_key):
-        self.llm = OpenAI(model_name="gpt-4", temperature=0.7, openai_api_key=api_key)
+        # Correct initialization of the ChatOpenAI model
+        self.llm = ChatOpenAI(model_name="gpt-4o-2024-08-06", temperature=0.3, openai_api_key=api_key)
         self.prompt = PromptTemplate(
             input_variables=["transcript"],
             template="""
@@ -118,15 +119,15 @@ class GPTService:
         
         current_section = None
         for line in result.split('\n'):
-            if line.strip().startswith('<adviesmotivatie_'):
+            line = line.strip()
+            if line.startswith('<adviesmotivatie_'):
                 current_section = line.strip()[1:-1]
-            elif line.strip().endswith('</adviesmotivatie_'):
+            elif line.startswith('</adviesmotivatie_'):
                 current_section = None
             elif current_section:
                 sections[current_section] += line + '\n'
         
         # Remove any leading/trailing whitespace from each section
-        for key in sections:
-            sections[key] = sections[key].strip()
+        sections = {key: value.strip() for key, value in sections.items()}
         
         return sections
