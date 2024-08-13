@@ -1,65 +1,75 @@
 import streamlit as st
-import pyperclip
 
-class UIComponents:
-    def text_input(self):
-        st.subheader("Voer uw tekst in")
-        text = st.text_area("Typ of plak uw tekst hier", height=300)
-        if st.button("Analyseer Tekst"):
-            if text.strip():
-                return text
+def apply_custom_css():
+    st.markdown("""
+        <style>
+            .main {
+                background-color: #f0f0f5;
+                padding: 20px;
+            }
+            .sidebar .sidebar-content {
+                background-color: #ffffff;
+                padding: 20px;
+            }
+            .stButton > button {
+                color: white;
+                background-color: #4CAF50;
+                border: none;
+                padding: 10px 24px;
+                text-align: center;
+                text-decoration: none;
+                display: inline-block;
+                font-size: 16px;
+                margin: 4px 2px;
+                cursor: pointer;
+                border-radius: 16px;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+def render_sidebar():
+    st.sidebar.title("Hypotheek Assistent")
+    st.sidebar.write("Gebruik deze app om financiële adviezen te genereren op basis van transcripties.")
+    st.sidebar.write("Kies een sectie om te beginnen:")
+
+def render_tabs(gpt_service):
+    tab1, tab2, tab3 = st.tabs(["📄 Analyseer Transcript", "📊 Resultaten", "⚙️ Instellingen"])
+
+    with tab1:
+        st.header("📄 Analyseer een Transcript")
+        st.write("Upload hier een transcript om het te analyseren en gedetailleerde adviesmodules te genereren.")
+
+        transcript = st.text_area("Voer het transcript in:")
+        if st.button("Analyseer Transcript"):
+            if transcript:
+                result = gpt_service.analyze_transcript(transcript)
+                st.session_state['result'] = result
             else:
-                st.warning("Voer alstublieft tekst in voordat u op Analyseer drukt.")
-        return None
+                st.error("Voer een transcript in om te analyseren.")
 
-    def upload_audio(self):
-        st.subheader("Upload audiobestand")
-        audio_file = st.file_uploader("Kies een audiobestand", type=["wav", "mp3", "m4a"])
-        if audio_file is not None:
-            st.audio(audio_file)
-            if st.button("Transcribeer en Analyseer"):
-                return audio_file
-        return None
+    with tab2:
+        st.header("📊 Analyse Resultaten")
+        st.write("Hier worden de resultaten van de analyse weergegeven.")
 
-    def display_and_refine_adviesmodules(self, adviesmodules, gpt_service):
-        st.subheader("Analyseresultaten")
-        
-        if adviesmodules is None or len(adviesmodules) == 0:
-            st.warning("Er zijn geen adviesmodules om weer te geven. Probeer de analyse opnieuw uit te voeren.")
-            return None
-
-        final_adviesmodules = adviesmodules.copy()
-        
-        for module_name, content in adviesmodules.items():
-            st.write(f"**{module_name}:**")
-            new_content = st.text_area(f"Bewerk {module_name}", value=content, height=300, key=module_name)
-            final_adviesmodules[module_name] = new_content
-
-        feedback = st.text_area("Geef aanvullende feedback voor verfijning (optioneel)")
-        
-        if st.button("Verfijn Analyse"):
-            transcript = "\n".join([f"<{module_name}>\n{content}\n</{module_name}>" for module_name, content in final_adviesmodules.items()])
-            refined_adviesmodules = gpt_service.analyze_transcript(transcript)
-            if refined_adviesmodules:
-                final_adviesmodules = refined_adviesmodules
-                st.success("Analyse verfijnd op basis van feedback!")
+        if 'result' in st.session_state:
+            result = st.session_state['result']
+            if result:
+                for section, content in result.items():
+                    with st.expander(section.replace("_", " ").capitalize()):
+                        st.markdown(content)
             else:
-                st.error("Er is een fout opgetreden bij het verfijnen van de analyse. Probeer het opnieuw of neem contact op met de ondersteuning.")
-            
-        return final_adviesmodules
+                st.write("Er zijn nog geen resultaten beschikbaar. Ga naar de tab 'Analyseer Transcript' om te beginnen.")
+        else:
+            st.write("Er zijn nog geen resultaten beschikbaar. Ga naar de tab 'Analyseer Transcript' om te beginnen.")
 
-    def add_copy_buttons(self, adviesmodules):
-        if adviesmodules is None or len(adviesmodules) == 0:
-            return
+    with tab3:
+        st.header("⚙️ Instellingen")
+        st.write("Configureer hier de instellingen van de app.")
+        st.selectbox("Kies een model", ["GPT-3.5", "GPT-4"])
+        st.slider("Kies de temperatuurinstelling voor het model:", 0.0, 1.0, 0.7)
 
-        st.subheader("Kopieer Resultaten")
-        
-        for module_name, content in adviesmodules.items():
-            if st.button(f"Kopieer {module_name}"):
-                pyperclip.copy(content)
-                st.success(f"{module_name} gekopieerd naar klembord!")
-
-        if st.button("Kopieer Alle Adviesmodules"):
-            all_content = "\n\n".join([f"{module_name}:\n{content}" for module_name, content in adviesmodules.items()])
-            pyperclip.copy(all_content)
-            st.success("Alle adviesmodules gekopieerd naar klembord!")
+def render_footer():
+    st.markdown("""
+        <hr>
+        <center>Gemaakt met ❤️ door [Uw Naam]</center>
+        """, unsafe_allow_html=True)
