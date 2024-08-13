@@ -31,19 +31,19 @@ def render_home_screen():
     st.title("Welkom bij de Hypotheek Assistent")
     st.write("Kies het type invoer dat u wilt gebruiken:")
     
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Handmatige invoer"):
-            st.session_state.page = "text_input"
-    with col2:
-        if st.button("Bestand uploaden"):
-            st.session_state.page = "file_input"
+    if st.button("Handmatige invoer", key="text_input_button"):
+        st.session_state.page = "text_input"
+        st.experimental_rerun()
+    
+    if st.button("Bestand uploaden", key="file_input_button"):
+        st.session_state.page = "file_input"
+        st.experimental_rerun()
 
 def render_text_input_screen(gpt_service):
     st.header("Handmatige Invoer")
-    transcript = st.text_area("Voer het transcript in:")
+    transcript = st.text_area("Voer het transcript in:", key="text_input_area")
     
-    if st.button("Analyseer Transcript"):
+    if st.button("Analyseer Transcript", key="analyze_text_button"):
         if transcript:
             st.session_state.transcript = transcript
             with st.spinner("Bezig met analyseren... dit kan even duren."):
@@ -55,9 +55,9 @@ def render_text_input_screen(gpt_service):
 
 def render_file_input_screen(gpt_service):
     st.header("Bestand Uploaden")
-    uploaded_file = st.file_uploader("Upload uw transcript bestand", type=["txt", "docx"])
+    uploaded_file = st.file_uploader("Upload uw transcript bestand", type=["txt", "docx"], key="file_input_uploader")
     
-    if st.button("Analyseer Transcript") and uploaded_file:
+    if st.button("Analyseer Transcript", key="analyze_file_button"):
         if uploaded_file is not None:
             transcript = uploaded_file.read().decode("utf-8")
             st.session_state.transcript = transcript
@@ -78,7 +78,7 @@ def render_result_screen():
     else:
         st.write("Er zijn geen resultaten beschikbaar.")
     
-    if st.button("Terug naar Start"):
+    if st.button("Terug naar Start", key="back_to_home_button"):
         st.session_state.page = "home"
         st.experimental_rerun()
 
