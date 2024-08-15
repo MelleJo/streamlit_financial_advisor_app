@@ -157,55 +157,73 @@ def render_progress_bar():
     st.progress(current_step / len(steps))
 
 def render_feedback_section():
-    st.markdown('<div class="feedback-card">', unsafe_allow_html=True)
-    st.markdown('<div class="feedback-title">Feedback geven</div>', unsafe_allow_html=True)
-    st.write("We waarderen uw feedback om onze service te verbeteren.")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        user_name = st.text_input("Uw naam")
-    with col2:
-        feedback_type = st.selectbox("Type feedback", ["Positief", "Negatief"])
-    
-    feedback_text = st.text_area("Uw feedback")
-    
-    if st.button("Verstuur Feedback", key="submit_feedback"):
-        if user_name and feedback_text:
-            send_feedback_email(user_name, feedback_type, feedback_text)
-            st.success("Bedankt voor uw feedback!")
-        else:
-            st.error("Vul alstublieft uw naam en feedback in.")
-    
-    st.markdown('</div>', unsafe_allow_html=True)
+    try:
+        st.markdown('<div class="feedback-card">', unsafe_allow_html=True)
+        st.markdown('<div class="feedback-title">Feedback geven</div>', unsafe_allow_html=True)
+        st.write("We waarderen uw feedback om onze service te verbeteren.")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            user_name = st.text_input("Uw naam")
+        with col2:
+            feedback_type = st.selectbox("Type feedback", ["Positief", "Negatief"])
+        
+        feedback_text = st.text_area("Uw feedback")
+        
+        if st.button("Verstuur Feedback", key="submit_feedback"):
+            if user_name and feedback_text:
+                send_feedback_email(user_name, feedback_type, feedback_text)
+            else:
+                st.error("Vul alstublieft uw naam en feedback in.")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+    except Exception as e:
+        st.error(f"Er is een fout opgetreden in de feedback sectie: {str(e)}")
 
 def send_feedback_email(user_name, feedback_type, feedback_text):
-    email_config = st.secrets["email"]
-    
-    msg = MIMEMultipart()
-    msg['From'] = email_config['username']
-    msg['To'] = email_config['receiving_email']
-    msg['Subject'] = f"AI Hypotheek Assistent Feedback - {feedback_type}"
-
-    body = f"""
-    Naam van gebruiker: {user_name}
-    Type feedback: {feedback_type}
-    Feedback: {feedback_text}
-
-    Input (transcript):
-    {st.session_state.get('transcript', 'Geen transcript beschikbaar')}
-
-    Output:
-    {st.session_state.get('result', 'Geen resultaten beschikbaar')}
-    """
-
-    msg.attach(MIMEText(body, 'plain'))
-
     try:
-        server = smtplib.SMTP(email_config['smtp_server'], email_config['smtp_port'])
+        email_config = st.secrets.get("email", {})
+        if not email_config:
+            st.warning("Email configuration is missing. Feedback will be saved locally.")
+            # Here you could implement a local saving mechanism
+            return
+
+        msg = MIMEMultipart()
+        msg['From'] = email_config.get('username', 'default@example.com')
+        msg['To'] = email_config.get('receiving_email', 'm.jorna@veldhuisadvies.online')
+        msg['Subject'] = f"AI Hypotheek Assistent Feedback - {feedback_type}"
+
+        body = f"""
+        Naam van gebruiker: {user_name}
+        Type feedback: {feedback_type}
+        Feedback: {feedback_text}
+
+        Input (transcript):
+        {st.session_state.get('transcript', 'Geen transcript beschikbaar')}
+
+        Output:
+        {st.session_state.get('result', 'Geen resultaten beschikbaar')}
+        """
+
+        msg.attach(MIMEText(body, 'plain'))
+
+        smtp_server = email_config.get('smtp_server', 'smtp.gmail.com')
+        smtp_port = email_config.get('smtp_port', 587)
+        username = email_config.get('username', '')
+        password = email_config.get('password', '')
+
+        if not all([smtp_server, smtp_port, username, password]):
+            st.warning("Incomplete email configuration. Feedback will be saved locally.")
+            # Here you could implement a local saving mechanism
+            return
+
+        server = smtplib.SMTP(smtp_server, smtp_port)
         server.starttls()
-        server.login(email_config['username'], email_config['password'])
+        server.login(username, password)
         text = msg.as_string()
-        server.sendmail(email_config['username'], email_config['receiving_email'], text)
+        server.sendmail(username, msg['To'], text)
         server.quit()
+        st.success("Feedback successfully sent!")
     except Exception as e:
         st.error(f"Er is een fout opgetreden bij het verzenden van de feedback: {str(e)}")
+        # Here you could implement a local saving mechanism as a fallback
