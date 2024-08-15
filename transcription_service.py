@@ -2,6 +2,7 @@ import streamlit as st
 from openai import OpenAI
 import tempfile
 import os
+import mimetypes
 
 class TranscriptionService:
     def __init__(self):
@@ -12,14 +13,18 @@ class TranscriptionService:
         with st.spinner("Transcribing..."):
             try:
                 # Create a temporary file
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_audio_file:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".m4a") as temp_audio_file:
                     if isinstance(audio_input, bytes):
                         # If audio_input is bytes (from recorded audio)
                         temp_audio_file.write(audio_input)
                     else:
                         # If audio_input is an UploadedFile object
-                        temp_audio_file.write(audio_input.read())
+                        temp_audio_file.write(audio_input.getvalue())
                     temp_audio_file.flush()
+
+                    # Debug information
+                    st.write(f"File size: {os.path.getsize(temp_audio_file.name)} bytes")
+                    st.write(f"File type: {mimetypes.guess_type(temp_audio_file.name)[0]}")
 
                     # Use the temporary file for transcription
                     with open(temp_audio_file.name, "rb") as audio_file:
