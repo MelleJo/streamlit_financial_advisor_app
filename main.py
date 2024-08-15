@@ -4,28 +4,35 @@ from audio_service import AudioService
 from transcription_service import TranscriptionService
 from ui_components import apply_custom_css, render_choose_method, render_upload, render_results
 
-# Initialize services
-gpt_service = GPTService()
-audio_service = AudioService()
-transcription_service = TranscriptionService()
+# Fetch the API key from Streamlit secrets
+api_key = st.secrets["API"]["OPENAI_API_KEY"]
 
-# Apply custom CSS for improved UI
-apply_custom_css()
+# Ensure the API key is provided
+if not api_key:
+    st.error("API key for GPT is missing. Please set it in Streamlit secrets.")
+else:
+    # Initialize services with the API key
+    gpt_service = GPTService(api_key)
+    audio_service = AudioService()
+    transcription_service = TranscriptionService()
 
-# Main logic to handle steps in the app
-if 'step' not in st.session_state:
-    st.session_state.step = "choose_method"
+    # Apply custom CSS for improved UI
+    apply_custom_css()
 
-if st.session_state.step == "choose_method":
-    render_choose_method()
-elif st.session_state.step == "upload":
-    render_upload(gpt_service, audio_service, transcription_service)
-elif st.session_state.step == "results":
-    render_results()
-
-# Handling rerun or errors in steps
-if 'step' in st.session_state:
-    if st.session_state.step == "error":
-        st.error("Something went wrong. Please try again.")
+    # Main logic to handle steps in the app
+    if 'step' not in st.session_state:
         st.session_state.step = "choose_method"
-        st.experimental_rerun()
+
+    if st.session_state.step == "choose_method":
+        render_choose_method()
+    elif st.session_state.step == "upload":
+        render_upload(gpt_service, audio_service, transcription_service)
+    elif st.session_state.step == "results":
+        render_results()
+
+    # Handling rerun or errors in steps
+    if 'step' in st.session_state:
+        if st.session_state.step == "error":
+            st.error("Something went wrong. Please try again.")
+            st.session_state.step = "choose_method"
+            st.rerun()  # Use st.rerun() instead of st.experimental_rerun()
