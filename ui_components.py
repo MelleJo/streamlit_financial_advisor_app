@@ -8,38 +8,38 @@ def apply_custom_css():
     st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
-    
+
     html, body, [class*="css"] {
         font-family: 'Inter', sans-serif;
         color: #1f2937;
     }
 
     .main {
-        background-color: #f3f4f6;
+        background: linear-gradient(135deg, #e2e8f0, #f8fafc);
         padding: 2rem;
     }
 
     .stApp {
-        max-width: 1000px;
+        max-width: 1200px;
         margin: 0 auto;
         padding-top: 2rem;
-        border-radius: 12px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-        background-color: #ffffff;
     }
 
     h1 {
-        color: #1f2937;
+        color: #111827;
         font-weight: 800;
         text-align: center;
-        margin-bottom: 1.5rem;
-        font-size: 2.5rem;
+        margin-bottom: 2rem;
+        font-size: 2.8rem;
+        text-transform: uppercase;
+        letter-spacing: 2px;
     }
-    
+
     p {
         text-align: center;
-        font-size: 1.1rem;
-        color: #4b5563;
+        font-size: 1.2rem;
+        color: #6b7280;
+        margin-bottom: 2rem;
     }
 
     h2, h3 {
@@ -50,83 +50,87 @@ def apply_custom_css():
 
     .stButton>button {
         color: #ffffff;
-        background-color: #3b82f6;
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
         border: none;
-        border-radius: 8px;
-        padding: 0.75rem 1.5rem;
+        border-radius: 12px;
+        padding: 0.85rem 1.7rem;
         font-weight: 600;
-        font-size: 1.1rem;
+        font-size: 1.2rem;
         transition: all 0.3s ease;
         width: 100%;
-        box-shadow: 0 6px 15px rgba(59, 130, 246, 0.3);
+        box-shadow: 0 10px 25px rgba(59, 130, 246, 0.4);
     }
     
     .stButton>button:hover {
-        background-color: #2563eb;
-        box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
-        transform: translateY(-2px);
+        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        box-shadow: 0 12px 30px rgba(37, 99, 235, 0.5);
+        transform: translateY(-3px);
     }
 
     .stButton>button:active {
-        background-color: #1e40af;
-        box-shadow: 0 4px 10px rgba(30, 64, 175, 0.4);
+        background: linear-gradient(135deg, #1e40af, #1e3a8a);
+        box-shadow: 0 6px 15px rgba(30, 64, 175, 0.4);
         transform: translateY(0);
     }
 
     .stTextInput>div>div>input, .stTextArea>div>div>textarea {
         border-radius: 8px;
         border: 1px solid #d1d5db;
-        padding: 0.6rem;
+        padding: 0.7rem;
         font-size: 1rem;
         color: #374151;
+        background-color: #f9fafb;
     }
 
     .stTextInput>div>div>input:focus, .stTextArea>div>div>textarea:focus {
         border-color: #3b82f6;
-        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3);
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.4);
     }
 
     .section-title {
-        font-size: 1.25em;
+        font-size: 1.4em;
         font-weight: bold;
-        margin-top: 1em;
-        margin-bottom: 0.5em;
+        margin-top: 1.2em;
+        margin-bottom: 0.6em;
         background-color: #e5e7eb;
-        padding: 0.75rem;
-        border-radius: 8px;
+        padding: 0.9rem;
+        border-radius: 10px;
         color: #111827;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
 
     .result-title {
         font-weight: bold;
-        margin-top: 0.5em;
+        margin-top: 0.6em;
         color: #111827;
     }
 
     .feedback-card {
         background-color: #f9fafb;
         border-radius: 12px;
-        padding: 2rem;
-        margin-top: 2rem;
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
+        padding: 2.5rem;
+        margin-top: 2.5rem;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.05);
     }
 
     .feedback-title {
-        font-size: 1.3em;
+        font-size: 1.4em;
         font-weight: bold;
-        margin-bottom: 1.5em;
+        margin-bottom: 1.8em;
         color: #2563eb;
     }
 
     .stProgress > div > div > div > div {
         background-color: #3b82f6;
+        border-radius: 10px;
     }
 
     .st-expander {
         background-color: #f3f4f6;
-        border-radius: 8px;
+        border-radius: 10px;
         margin-bottom: 1rem;
         border: 1px solid #e5e7eb;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
     }
 
     .st-expander-header {
@@ -147,7 +151,7 @@ def apply_custom_css():
 def render_choose_method():
     st.title("AI Hypotheek Assistent")
     
-    st.markdown("<p>Welkom bij de AI Hypotheek Assistent. Kies een methode om te beginnen:</p>", unsafe_allow_html=True)
+    st.markdown("<p>Kies een methode om te beginnen:</p>", unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([1, 1, 1], gap="large")
     with col1:
@@ -156,6 +160,7 @@ def render_choose_method():
         st.button("📁 Bestand Uploaden", use_container_width=True, key="choose_file_upload")
     with col3:
         st.button("🎙️ Audio Opnemen", use_container_width=True, key="choose_audio_record")
+
 
 
 def render_upload(gpt_service, audio_service, transcription_service):
