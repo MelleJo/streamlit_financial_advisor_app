@@ -63,7 +63,7 @@ def apply_custom_css():
     }
 
     .stButton>button {
-        color: #ffffff;
+        color: #ffffff !important;
         background: linear-gradient(135deg, #3b82f6, #2563eb);
         border: none;
         border-radius: 12px;
@@ -165,6 +165,7 @@ def apply_custom_css():
     </style>
     """, unsafe_allow_html=True)
 
+
 def render_choose_method():
     st.title("AI Hypotheek Assistent")
     
@@ -174,17 +175,20 @@ def render_choose_method():
     col1, col2, col3 = st.columns([1, 1, 1])
     with col1:
         if st.button("📝 Handmatige Invoer", use_container_width=True):
+            st.session_state.upload_method = "manual"
             st.session_state.step = "upload"
+            st.rerun()
     with col2:
         if st.button("📁 Bestand Uploaden", use_container_width=True):
+            st.session_state.upload_method = "file"
             st.session_state.step = "upload"
+            st.rerun()
     with col3:
         if st.button("🎙️ Audio Opnemen", use_container_width=True):
+            st.session_state.upload_method = "audio"
             st.session_state.step = "upload"
-            
-    # Ensure layout works correctly even on different screen sizes
-    st.write("")
-    st.write("")
+            st.rerun()
+
 
 
 
