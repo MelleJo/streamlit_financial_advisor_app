@@ -1,4 +1,4 @@
-streamlit==1.22.0
+streamlit
 streamlit-mic-recorder==0.0.2
 langchain==0.0.184
 openai==0.27.7
