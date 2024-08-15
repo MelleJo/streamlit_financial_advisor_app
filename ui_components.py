@@ -2,6 +2,7 @@ import streamlit as st
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import docx
 
 def apply_custom_css():
     st.markdown("""
@@ -186,7 +187,7 @@ def render_results():
                         st.write(line)
         
         if st.button("Exporteer als Word-document", use_container_width=True):
-            export_to_docx(result)
+            export_to_docx(result)  # Directly call the export function to trigger download
     else:
         st.warning("Er zijn geen resultaten beschikbaar.")
     
