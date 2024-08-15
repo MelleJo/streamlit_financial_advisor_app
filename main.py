@@ -22,7 +22,5 @@ def main():
     elif st.session_state.step == "results":
         ui.render_results()
 
-    ui.render_footer()
-
 if __name__ == "__main__":
     main()
