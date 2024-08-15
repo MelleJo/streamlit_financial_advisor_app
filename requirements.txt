@@ -1,6 +1,7 @@
 streamlit
 streamlit-mic-recorder
 langchain
+langchain-community
 openai
 python-dotenv
 pyperclip
