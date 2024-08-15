@@ -1,9 +1,9 @@
 streamlit
-streamlit-mic-recorder==0.0.2
-langchain==0.0.184
-openai==0.27.7
-python-dotenv==1.0.0
-pyperclip==1.8.2
+streamlit-mic-recorder
+langchain
+openai
+python-dotenv
+pyperclip
 streamlit-extras
 streamlit-lottie
 requests
