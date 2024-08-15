@@ -1,4 +1,7 @@
 import streamlit as st
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 def apply_custom_css():
     st.markdown("""
@@ -14,8 +17,7 @@ def apply_custom_css():
     }
     
     .stApp {
-        max-width: 800px;
-        margin: 0 auto;
+        max-width: none;
     }
     
     h1 {
@@ -59,6 +61,17 @@ def apply_custom_css():
     .stProgress > div > div > div > div {
         background-color: #3b82f6;
     }
+
+    .section-title {
+        font-size: 1.2em;
+        font-weight: bold;
+        margin-top: 1em;
+        margin-bottom: 0.5em;
+    }
+
+    .result-title {
+        font-weight: bold;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -90,6 +103,7 @@ def render_upload(gpt_service):
             with st.spinner("Bezig met analyseren..."):
                 result = gpt_service.analyze_transcript(transcript)
             st.session_state.result = result
+            st.session_state.transcript = transcript
             st.session_state.step = "results"
             st.experimental_rerun()
         else:
@@ -101,11 +115,18 @@ def render_results():
     result = st.session_state.get("result", None)
     if result:
         for section, content in result.items():
-            with st.expander(section.replace("_", " ").capitalize(), expanded=True):
-                st.markdown(f'<div class="result-card">{content}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="section-title">{section.replace("_", " ").capitalize()}</div>', unsafe_allow_html=True)
+            lines = content.split('\n')
+            for line in lines:
+                if line.strip().startswith('**') and line.strip().endswith('**'):
+                    st.markdown(f'<div class="result-title">{line.strip()[2:-2]}</div>', unsafe_allow_html=True)
+                else:
+                    st.write(line)
     else:
         st.warning("Er zijn geen resultaten beschikbaar.")
     
+    render_feedback_section()
+
     if st.button("Terug naar Start", use_container_width=True):
         st.session_state.step = "choose_method"
         st.experimental_rerun()
@@ -115,3 +136,48 @@ def render_progress_bar():
     steps = ["choose_method", "upload", "results"]
     current_step = steps.index(step) + 1
     st.progress(current_step / len(steps))
+
+def render_feedback_section():
+    with st.expander("Feedback geven"):
+        st.write("We waarderen uw feedback om onze service te verbeteren.")
+        user_name = st.text_input("Uw naam")
+        feedback_type = st.radio("Type feedback", ["Positief", "Negatief"])
+        feedback_text = st.text_area("Uw feedback")
+        if st.button("Verstuur Feedback"):
+            if user_name and feedback_text:
+                send_feedback_email(user_name, feedback_type, feedback_text)
+                st.success("Bedankt voor uw feedback!")
+            else:
+                st.error("Vul alstublieft uw naam en feedback in.")
+
+def send_feedback_email(user_name, feedback_type, feedback_text):
+    email_config = st.secrets["email"]
+    
+    msg = MIMEMultipart()
+    msg['From'] = email_config['username']
+    msg['To'] = email_config['receiving_email']
+    msg['Subject'] = f"AI Hypotheek Assistent Feedback - {feedback_type}"
+
+    body = f"""
+    Naam van gebruiker: {user_name}
+    Type feedback: {feedback_type}
+    Feedback: {feedback_text}
+
+    Input (transcript):
+    {st.session_state.get('transcript', 'Geen transcript beschikbaar')}
+
+    Output:
+    {st.session_state.get('result', 'Geen resultaten beschikbaar')}
+    """
+
+    msg.attach(MIMEText(body, 'plain'))
+
+    try:
+        server = smtplib.SMTP(email_config['smtp_server'], email_config['smtp_port'])
+        server.starttls()
+        server.login(email_config['username'], email_config['password'])
+        text = msg.as_string()
+        server.sendmail(email_config['username'], email_config['receiving_email'], text)
+        server.quit()
+    except Exception as e:
+        st.error(f"Er is een fout opgetreden bij het verzenden van de feedback: {str(e)}")

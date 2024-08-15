@@ -8,3 +8,4 @@ streamlit-extras
 streamlit-lottie
 requests
 streamlit-option-menu
+smtplib
