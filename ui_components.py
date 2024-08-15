@@ -1,5 +1,4 @@
 import streamlit as st
-from streamlit_option_menu import option_menu
 from streamlit_extras.colored_header import colored_header
 
 def apply_custom_css():
@@ -16,7 +15,7 @@ def apply_custom_css():
     }
     
     .stApp {
-        max-width: 1000px;
+        max-width: 800px;
         margin: 0 auto;
     }
     
@@ -35,9 +34,10 @@ def apply_custom_css():
         background-color: #3b82f6;
         border: none;
         border-radius: 6px;
-        padding: 0.5rem 1rem;
+        padding: 0.75rem 1.5rem;
         font-weight: 500;
         transition: all 0.3s ease;
+        width: 100%;
     }
     
     .stButton>button:hover {
@@ -45,19 +45,8 @@ def apply_custom_css():
         box-shadow: 0 4px 6px rgba(37, 99, 235, 0.1);
     }
     
-    .stTextInput>div>div>input {
+    .stTextInput>div>div>input, .stTextArea>div>div>textarea {
         border-radius: 6px;
-    }
-    
-    .stTextArea>div>div>textarea {
-        border-radius: 6px;
-    }
-    
-    .css-1aumxhk {
-        background-color: #ffffff;
-        border-radius: 10px;
-        padding: 1.5rem;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
     }
     
     .result-card {
@@ -66,113 +55,64 @@ def apply_custom_css():
         padding: 1.5rem;
         margin-bottom: 1rem;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        transition: all 0.3s ease;
     }
     
-    .result-card:hover {
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    }
-    
-    .stExpander {
-        border: none;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        border-radius: 10px;
-    }
-    
-    .stExpander > div:first-child {
-        border-top-left-radius: 10px;
-        border-top-right-radius: 10px;
-    }
-    
-    .stExpander > div:last-child {
-        border-bottom-left-radius: 10px;
-        border-bottom-right-radius: 10px;
+    .stProgress > div > div > div > div {
+        background-color: #3b82f6;
     }
     </style>
     """, unsafe_allow_html=True)
 
-def render_navigation():
-    selected = option_menu(
-        menu_title=None,
-        options=["Home", "Handmatige Invoer", "Bestand Uploaden", "Resultaten"],
-        icons=["house", "pencil-square", "file-earmark-text", "graph-up"],
-        menu_icon="cast",
-        default_index=0,
-        orientation="horizontal",
-        styles={
-            "container": {"padding": "0!important", "background-color": "#f8fafc"},
-            "icon": {"color": "#3b82f6", "font-size": "18px"}, 
-            "nav-link": {"font-size": "16px", "text-align": "center", "margin":"0px", "--hover-color": "#eef2ff"},
-            "nav-link-selected": {"background-color": "#3b82f6", "color": "white"},
-        }
-    )
-    return selected
-
-def render_home_screen():
+def render_choose_method():
     colored_header(
         label="AI Hypotheek Assistent",
-        description="Welkom bij de toekomst van hypotheekadvies",
+        description="Kies hoe u uw notities wilt uploaden",
         color_name="blue-70"
     )
-    st.write("Onze AI-assistent staat klaar om uw notities te analyseren en waardevolle inzichten te bieden. Kies een optie om te beginnen.")
-
+    
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("📝 Handmatige Invoer", use_container_width=True, key="home_manual_input"):
-            st.session_state.page = "input"
+        if st.button("📝 Handmatige Invoer", use_container_width=True, key="choose_manual_input"):
+            st.session_state.upload_method = "manual"
+            st.session_state.step = "upload"
             st.experimental_rerun()
     with col2:
-        if st.button("📁 Bestand Uploaden", use_container_width=True, key="home_file_upload"):
-            st.session_state.page = "upload"
+        if st.button("📁 Bestand Uploaden", use_container_width=True, key="choose_file_upload"):
+            st.session_state.upload_method = "file"
+            st.session_state.step = "upload"
             st.experimental_rerun()
 
-def render_input_screen(gpt_service):
-    colored_header(
-        label="Handmatige Invoer",
-        description="Voer hier uw notities in en laat onze AI-assistent ze analyseren",
-        color_name="blue-70"
-    )
+def render_upload(gpt_service):
+    if st.session_state.upload_method == "manual":
+        colored_header(
+            label="Handmatige Invoer",
+            description="Voer hier uw notities in",
+            color_name="blue-70"
+        )
+        transcript = st.text_area("Voer het transcript in:", height=300)
+    else:
+        colored_header(
+            label="Bestand Uploaden",
+            description="Upload uw transcript bestand",
+            color_name="blue-70"
+        )
+        uploaded_file = st.file_uploader("Kies een bestand", type=["txt", "docx"])
+        transcript = uploaded_file.read().decode("utf-8") if uploaded_file else None
     
-    transcript = st.text_area("Voer het transcript in:", height=300)
-    
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col2:
-        if st.button("🔍 Analyseer", use_container_width=True):
-            if transcript:
-                with st.spinner("Bezig met analyseren..."):
-                    result = gpt_service.analyze_transcript(transcript)
-                st.session_state.result = result
-                st.session_state.page = "results"
-                st.experimental_rerun()
-            else:
-                st.error("Voer een transcript in om te analyseren.")
+    if st.button("🔍 Analyseer", use_container_width=True):
+        if transcript:
+            with st.spinner("Bezig met analyseren..."):
+                result = gpt_service.analyze_transcript(transcript)
+            st.session_state.result = result
+            st.session_state.step = "results"
+            st.experimental_rerun()
+        else:
+            st.error("Voer een transcript in of upload een bestand om te analyseren.")
 
-def render_upload_screen(gpt_service):
-    colored_header(
-        label="Bestand Uploaden",
-        description="Upload uw transcript bestand en laat onze AI-assistent het analyseren",
-        color_name="blue-70"
-    )
-    
-    uploaded_file = st.file_uploader("Kies een bestand", type=["txt", "docx"])
-    
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col2:
-        if st.button("🔍 Analyseer", use_container_width=True):
-            if uploaded_file is not None:
-                transcript = uploaded_file.read().decode("utf-8")
-                with st.spinner("Bezig met analyseren..."):
-                    result = gpt_service.analyze_transcript(transcript)
-                st.session_state.result = result
-                st.session_state.page = "results"
-                st.experimental_rerun()
-            else:
-                st.error("Upload een geldig bestand om te analyseren.")
-
-def render_result_screen():
+def render_results():
     colored_header(
         label="Analyse Resultaten",
-        description="Hier zijn de inzichten die onze AI-assistent heeft gegenereerd",
+        description="Hier zijn de inzichten van onze AI-assistent",
         color_name="blue-70"
     )
     
@@ -184,11 +124,15 @@ def render_result_screen():
     else:
         st.warning("Er zijn geen resultaten beschikbaar.")
     
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col2:
-        if st.button("🏠 Terug naar Start", use_container_width=True):
-            st.session_state.page = "home"
-            st.experimental_rerun()
+    if st.button("🏠 Terug naar Start", use_container_width=True):
+        st.session_state.step = "choose_method"
+        st.experimental_rerun()
+
+def render_progress_bar():
+    step = st.session_state.get("step", "choose_method")
+    steps = ["choose_method", "upload", "results"]
+    current_step = steps.index(step) + 1
+    st.progress(current_step / len(steps))
 
 def render_footer():
     st.markdown("""

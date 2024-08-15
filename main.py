@@ -10,19 +10,17 @@ api_key = st.secrets["OPENAI_API_KEY"]
 gpt_service = GPTService(api_key=api_key)
 
 def main():
-    if "page" not in st.session_state:
-        st.session_state.page = "home"
+    if "step" not in st.session_state:
+        st.session_state.step = "choose_method"
 
-    selected = ui.render_navigation()
+    ui.render_progress_bar()
 
-    if selected == "Home" or st.session_state.page == "home":
-        ui.render_home_screen()
-    elif selected == "Handmatige Invoer" or st.session_state.page == "input":
-        ui.render_input_screen(gpt_service)
-    elif selected == "Bestand Uploaden" or st.session_state.page == "upload":
-        ui.render_upload_screen(gpt_service)
-    elif selected == "Resultaten" or st.session_state.page == "results":
-        ui.render_result_screen()
+    if st.session_state.step == "choose_method":
+        ui.render_choose_method()
+    elif st.session_state.step == "upload":
+        ui.render_upload(gpt_service)
+    elif st.session_state.step == "results":
+        ui.render_results()
 
     ui.render_footer()
 
