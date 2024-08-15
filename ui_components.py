@@ -102,50 +102,70 @@ def render_choose_method():
         if st.button("📝 Handmatige Invoer", use_container_width=True, key="choose_manual_input"):
             st.session_state.upload_method = "manual"
             st.session_state.step = "upload"
-            st.experimental_rerun()
+            st.rerun()
     with col2:
         if st.button("📁 Bestand Uploaden", use_container_width=True, key="choose_file_upload"):
             st.session_state.upload_method = "file"
             st.session_state.step = "upload"
-            st.experimental_rerun()
+            st.rerun()
     with col3:
         if st.button("🎙️ Audio Opnemen", use_container_width=True, key="choose_audio_record"):
             st.session_state.upload_method = "audio"
             st.session_state.step = "upload"
-            st.experimental_rerun()
+            st.rerun()
 
 def render_upload(gpt_service, audio_service, transcription_service):
     st.title("Transcript Invoer")
+    transcript = None
+
     if st.session_state.upload_method == "manual":
         transcript = st.text_area("Voer het transcript in:", height=300)
+        if st.button("Analyseer", use_container_width=True):
+            process_transcript(transcript, gpt_service)
+
     elif st.session_state.upload_method == "file":
         uploaded_file = st.file_uploader("Kies een bestand", type=["txt", "docx", "wav", "mp3"])
         if uploaded_file:
             if uploaded_file.type.startswith('audio'):
-                with st.spinner("Transcribing audio..."):
+                with st.spinner("Audio wordt getranscribeerd..."):
                     transcript = transcription_service.transcribe(uploaded_file)
             else:
                 transcript = uploaded_file.read().decode("utf-8")
-        else:
-            transcript = None
+            
+            if transcript:
+                st.success("Bestand succesvol verwerkt.")
+                st.write("Transcript:")
+                st.text_area("Edit transcript if needed:", value=transcript, height=300, key="editable_transcript")
+                if st.button("Analyseer", use_container_width=True):
+                    process_transcript(st.session_state.editable_transcript, gpt_service)
+            else:
+                st.error("Er is een fout opgetreden bij het verwerken van het bestand.")
+
     else:  # audio recording
         audio_bytes = audio_service.record_audio()
         if audio_bytes:
-            with st.spinner("Transcribing audio..."):
+            with st.spinner("Audio wordt getranscribeerd..."):
                 transcript = transcription_service.transcribe(audio_bytes)
-        else:
-            transcript = None
-    
-    if st.button("Analyseer", use_container_width=True):
-        if transcript:
-            with st.spinner("Bezig met analyseren..."):
-                result = gpt_service.analyze_transcript(transcript)
-            st.session_state.result = result
-            st.session_state.transcript = transcript
-            st.session_state.step = "results"
-            st.experimental_rerun()
-        else:
-            st.error("Voer een transcript in, upload een bestand, of neem audio op om te analyseren.")
+            
+            if transcript:
+                st.success("Audio succesvol opgenomen en getranscribeerd.")
+                st.write("Transcript:")
+                st.text_area("Edit transcript if needed:", value=transcript, height=300, key="editable_transcript")
+                if st.button("Analyseer", use_container_width=True):
+                    process_transcript(st.session_state.editable_transcript, gpt_service)
+            else:
+                st.error("Er is een fout opgetreden bij het transcriberen van de audio.")
+
+def process_transcript(transcript, gpt_service):
+    if transcript:
+        with st.spinner("Bezig met analyseren..."):
+            result = gpt_service.analyze_transcript(transcript)
+        st.session_state.result = result
+        st.session_state.transcript = transcript
+        st.session_state.step = "results"
+        st.rerun()
+    else:
+        st.error("Er is geen transcript om te analyseren. Voer een transcript in, upload een bestand, of neem audio op.")
 
 def render_results():
     st.title("Analyse Resultaten")
@@ -160,14 +180,23 @@ def render_results():
                         st.markdown(f'<div class="result-title">{line.strip()[2:-2]}</div>', unsafe_allow_html=True)
                     else:
                         st.write(line)
+        
+        if st.button("Exporteer als Word-document", use_container_width=True):
+            export_to_docx(result)
     else:
         st.warning("Er zijn geen resultaten beschikbaar.")
     
     render_feedback_section()
 
-    if st.button("Terug naar Start", use_container_width=True):
-        st.session_state.step = "choose_method"
-        st.experimental_rerun()
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Terug naar Start", use_container_width=True):
+            st.session_state.step = "choose_method"
+            st.rerun()
+    with col2:
+        if st.button("Nieuwe Analyse", use_container_width=True):
+            st.session_state.clear()
+            st.rerun()
 
 def render_progress_bar():
     step = st.session_state.get("step", "choose_method")
@@ -198,15 +227,12 @@ def render_feedback_section():
 
 def send_feedback_email(user_name, feedback_type, feedback_text):
     try:
-        # Check if email configuration exists in secrets
         if 'email' not in st.secrets:
             st.error("Email configuration is missing in secrets. Please check your secrets.toml file.")
             return
 
-        # Access email configuration
         email_config = st.secrets.email
 
-        # Check if all required email configuration fields are present
         required_fields = ['username', 'password', 'smtp_server', 'smtp_port', 'receiving_email']
         missing_fields = [field for field in required_fields if not hasattr(email_config, field)]
         if missing_fields:
@@ -241,3 +267,29 @@ def send_feedback_email(user_name, feedback_type, feedback_text):
         st.success("Feedback successfully sent!")
     except Exception as e:
         st.error(f"Er is een fout opgetreden bij het verzenden van de feedback: {str(e)}")
+
+def export_to_docx(result):
+    from docx import Document
+    from io import BytesIO
+    
+    doc = Document()
+    doc.add_heading('Analyse Resultaten', 0)
+
+    for section, content in result.items():
+        doc.add_heading(section.replace("_", " ").capitalize(), level=1)
+        for line in content.split('\n'):
+            if line.strip().startswith('**') and line.strip().endswith('**'):
+                doc.add_paragraph(line.strip()[2:-2], style='Heading 2')
+            else:
+                doc.add_paragraph(line)
+
+    bio = BytesIO()
+    doc.save(bio)
+    bio.seek(0)
+    
+    st.download_button(
+        label="Download Word Document",
+        data=bio.getvalue(),
+        file_name="analyse_resultaten.docx",
+        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )

@@ -3,18 +3,14 @@ from streamlit_mic_recorder import mic_recorder
 
 class AudioService:
     def record_audio(self):
-        st.subheader("Record Your Advisory Notes")
-        st.write("Click the microphone button to start recording. Click again to stop.")
+        st.subheader("Neem uw adviesnotities op")
+        st.write("Klik op de microfoonknop om de opname te starten. Klik nogmaals om te stoppen.")
 
-        # Initialize _last_audio_id in session state if it doesn't exist
-        if "_last_audio_id" not in st.session_state:
-            st.session_state._last_audio_id = 0
-
-        audio = mic_recorder(start_prompt="Start Recording", stop_prompt="Stop Recording", key="recorder")
+        audio = mic_recorder(start_prompt="Start Opname", stop_prompt="Stop Opname", key="recorder")
 
         if audio:
             st.audio(audio['bytes'])
-            st.success("Audio recorded successfully!")
+            st.success("Audio succesvol opgenomen!")
             return audio['bytes']
         
         return None
