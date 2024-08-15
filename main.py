@@ -2,40 +2,36 @@ import streamlit as st
 from gpt_service import GPTService
 from audio_service import AudioService
 from transcription_service import TranscriptionService
-from ui_components import apply_custom_css, render_choose_method, render_upload, render_results
+import ui_components as ui
 
-# Fetch the API key from Streamlit secrets
-api_key = st.secrets["API"]["OPENAI_API_KEY"]
+st.set_page_config(page_title="AI Hypotheek Assistent", page_icon="🏠", layout="wide")
 
-# Ensure the API key is provided
-if not api_key:
-    st.error("API key for GPT is missing. Please set it in Streamlit secrets.")
+ui.apply_custom_css()
+
+# Check if API configuration exists
+if 'API' not in st.secrets:
+    st.error("API configuration is missing in secrets. Please check your secrets.toml file.")
 else:
-    # Initialize services with the API key
-    gpt_service = GPTService(api_key)
-    audio_service = AudioService()
-    transcription_service = TranscriptionService()
+    api_key = st.secrets.API.get("OPENAI_API_KEY")
+    if not api_key:
+        st.error("OPENAI_API_KEY is missing in API secrets. Please check your configuration.")
+    else:
+        gpt_service = GPTService(api_key=api_key)
+        audio_service = AudioService()
+        transcription_service = TranscriptionService()
 
-    # Apply custom CSS for improved UI
-    apply_custom_css()
-
-    # Initialize the session state if not already initialized
-    if 'step' not in st.session_state:
+def main():
+    if "step" not in st.session_state:
         st.session_state.step = "choose_method"
-    if 'upload_method' not in st.session_state:
-        st.session_state.upload_method = None
 
-    # Main logic to handle steps in the app
+    ui.render_progress_bar()
+
     if st.session_state.step == "choose_method":
-        render_choose_method()
+        ui.render_choose_method()
     elif st.session_state.step == "upload":
-        render_upload(gpt_service, audio_service, transcription_service)
+        ui.render_upload(gpt_service, audio_service, transcription_service)
     elif st.session_state.step == "results":
-        render_results()
+        ui.render_results()
 
-    # Handling rerun or errors in steps
-    if 'step' in st.session_state:
-        if st.session_state.step == "error":
-            st.error("Something went wrong. Please try again.")
-            st.session_state.step = "choose_method"
-            st.rerun()  # Use st.rerun() instead of st.experimental_rerun()
+if __name__ == "__main__":
+    main()

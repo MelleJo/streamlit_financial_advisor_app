@@ -2,204 +2,123 @@ import streamlit as st
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-import docx
-
-import streamlit as st
+from docx import Document
+from io import BytesIO
 
 def apply_custom_css():
     st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
-
+    
     html, body, [class*="css"] {
         font-family: 'Inter', sans-serif;
-        color: #1f2937;
-        height: 100%;
-        width: 100%;
     }
-
+    
     .main {
-        background: linear-gradient(135deg, #e2e8f0, #f8fafc);
-        padding: 2rem;
-        height: 100vh;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
+        background-color: #f8fafc;
     }
-
+    
     .stApp {
-        width: 100%;
-        max-width: 1100px;
-        padding-top: 2rem;
-        background-color: #ffffff;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-        border-radius: 12px;
-        padding: 2rem;
-        margin: 0 auto;
+        max-width: none;
     }
-
+    
     h1 {
-        color: #111827;
-        font-weight: 800;
-        text-align: center;
-        margin-bottom: 1.5rem;
-        font-size: 2.5rem;
-        text-transform: uppercase;
-        letter-spacing: 2px;
+        color: #1e293b;
+        font-weight: 700;
     }
-
-    p {
-        text-align: center;
-        font-size: 1.2rem;
-        color: #6b7280;
-        margin-bottom: 2rem;
-    }
-
+    
     h2, h3 {
-        color: #374151;
+        color: #334155;
         font-weight: 600;
-        margin-bottom: 0.5rem;
     }
-
+    
     .stButton>button {
-        color: #ffffff !important;
-        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        color: #ffffff;
+        background-color: #3b82f6;
         border: none;
-        border-radius: 12px;
-        padding: 0.85rem 1.7rem;
-        font-weight: 600;
-        font-size: 1.2rem;
+        border-radius: 6px;
+        padding: 0.75rem 1.5rem;
+        font-weight: 500;
         transition: all 0.3s ease;
         width: 100%;
-        max-width: 300px;
-        margin: 0 auto;
-        box-shadow: 0 10px 25px rgba(59, 130, 246, 0.4);
-        display: block;
     }
     
     .stButton>button:hover {
-        background: linear-gradient(135deg, #2563eb, #1d4ed8);
-        box-shadow: 0 12px 30px rgba(37, 99, 235, 0.5);
-        transform: translateY(-3px);
+        background-color: #2563eb;
+        box-shadow: 0 4px 6px rgba(37, 99, 235, 0.1);
     }
-
-    .stButton>button:active {
-        background: linear-gradient(135deg, #1e40af, #1e3a8a);
-        box-shadow: 0 6px 15px rgba(30, 64, 175, 0.4);
-        transform: translateY(0);
-    }
-
+    
     .stTextInput>div>div>input, .stTextArea>div>div>textarea {
-        border-radius: 8px;
-        border: 1px solid #d1d5db;
-        padding: 0.7rem;
-        font-size: 1rem;
-        color: #374151;
-        background-color: #f9fafb;
+        border-radius: 6px;
     }
-
-    .stTextInput>div>div>input:focus, .stTextArea>div>div>textarea:focus {
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.4);
+    
+    .result-card {
+        background-color: #ffffff;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    
+    .stProgress > div > div > div > div {
+        background-color: #3b82f6;
     }
 
     .section-title {
-        font-size: 1.4em;
+        font-size: 1.2em;
         font-weight: bold;
-        margin-top: 1.2em;
-        margin-bottom: 0.6em;
-        background-color: #e5e7eb;
-        padding: 0.9rem;
-        border-radius: 10px;
-        color: #111827;
-        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-top: 1em;
+        margin-bottom: 0.5em;
+        background-color: #e2e8f0;
+        padding: 0.5em;
+        border-radius: 6px;
     }
 
     .result-title {
         font-weight: bold;
-        margin-top: 0.6em;
-        color: #111827;
+        margin-top: 0.5em;
     }
 
     .feedback-card {
-        background-color: #f9fafb;
-        border-radius: 12px;
-        padding: 2.5rem;
-        margin-top: 2.5rem;
-        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.05);
+        background-color: #f1f5f9;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-top: 2rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     }
 
     .feedback-title {
-        font-size: 1.4em;
-        font-weight: bold;
-        margin-bottom: 1.8em;
-        color: #2563eb;
-    }
-
-    .stProgress > div > div > div > div {
-        background-color: #3b82f6;
-        border-radius: 10px;
-    }
-
-    .st-expander {
-        background-color: #f3f4f6;
-        border-radius: 10px;
-        margin-bottom: 1rem;
-        border: 1px solid #e5e7eb;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
-    }
-
-    .st-expander-header {
-        font-weight: bold;
         font-size: 1.2em;
-        color: #111827;
+        font-weight: bold;
+        margin-bottom: 1em;
+        color: #3b82f6;
     }
-
-    .st-expander-content {
-        font-size: 1rem;
-        color: #4b5563;
-        padding-top: 0.75rem;
-    }
-    
     </style>
     """, unsafe_allow_html=True)
-
 
 def render_choose_method():
     st.title("AI Hypotheek Assistent")
     
-    st.markdown("<p>Kies een methode om te beginnen:</p>", unsafe_allow_html=True)
-    
-    # Use columns to arrange the buttons horizontally
-    col1, col2, col3 = st.columns([1, 1, 1])
+    col1, col2, col3 = st.columns(3)
     with col1:
-        if st.button("📝 Handmatige Invoer", use_container_width=True):
+        if st.button("📝 Handmatige Invoer", use_container_width=True, key="choose_manual_input"):
             st.session_state.upload_method = "manual"
             st.session_state.step = "upload"
             st.rerun()
     with col2:
-        if st.button("📁 Bestand Uploaden", use_container_width=True):
+        if st.button("📁 Bestand Uploaden", use_container_width=True, key="choose_file_upload"):
             st.session_state.upload_method = "file"
             st.session_state.step = "upload"
             st.rerun()
     with col3:
-        if st.button("🎙️ Audio Opnemen", use_container_width=True):
+        if st.button("🎙️ Audio Opnemen", use_container_width=True, key="choose_audio_record"):
             st.session_state.upload_method = "audio"
             st.session_state.step = "upload"
             st.rerun()
 
-
-
-
-
 def render_upload(gpt_service, audio_service, transcription_service):
     st.title("Transcript Invoer")
     transcript = None
-
-    # Ensure upload_method is initialized
-    if 'upload_method' not in st.session_state:
-        st.session_state.upload_method = None
 
     if st.session_state.upload_method == "manual":
         transcript = st.text_area("Voer het transcript in:", height=300)
@@ -269,7 +188,7 @@ def render_results():
                         st.write(line)
         
         if st.button("Exporteer als Word-document", use_container_width=True):
-            export_to_docx(result)  # Directly call the export function to trigger download
+            export_to_docx(result)
     else:
         st.warning("Er zijn geen resultaten beschikbaar.")
     
@@ -356,9 +275,6 @@ def send_feedback_email(user_name, feedback_type, feedback_text):
         st.error(f"Er is een fout opgetreden bij het verzenden van de feedback: {str(e)}")
 
 def export_to_docx(result):
-    from docx import Document
-    from io import BytesIO
-    
     doc = Document()
     doc.add_heading('Analyse Resultaten', 0)
 
