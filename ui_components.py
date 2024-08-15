@@ -97,7 +97,7 @@ def apply_custom_css():
 def render_choose_method():
     st.title("AI Hypotheek Assistent")
     
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
         if st.button("📝 Handmatige Invoer", use_container_width=True, key="choose_manual_input"):
             st.session_state.upload_method = "manual"
@@ -108,14 +108,33 @@ def render_choose_method():
             st.session_state.upload_method = "file"
             st.session_state.step = "upload"
             st.experimental_rerun()
+    with col3:
+        if st.button("🎙️ Audio Opnemen", use_container_width=True, key="choose_audio_record"):
+            st.session_state.upload_method = "audio"
+            st.session_state.step = "upload"
+            st.experimental_rerun()
 
-def render_upload(gpt_service):
+def render_upload(gpt_service, audio_service, transcription_service):
     st.title("Transcript Invoer")
     if st.session_state.upload_method == "manual":
         transcript = st.text_area("Voer het transcript in:", height=300)
-    else:
-        uploaded_file = st.file_uploader("Kies een bestand", type=["txt", "docx"])
-        transcript = uploaded_file.read().decode("utf-8") if uploaded_file else None
+    elif st.session_state.upload_method == "file":
+        uploaded_file = st.file_uploader("Kies een bestand", type=["txt", "docx", "wav", "mp3"])
+        if uploaded_file:
+            if uploaded_file.type.startswith('audio'):
+                with st.spinner("Transcribing audio..."):
+                    transcript = transcription_service.transcribe(uploaded_file)
+            else:
+                transcript = uploaded_file.read().decode("utf-8")
+        else:
+            transcript = None
+    else:  # audio recording
+        audio_bytes = audio_service.record_audio()
+        if audio_bytes:
+            with st.spinner("Transcribing audio..."):
+                transcript = transcription_service.transcribe(audio_bytes)
+        else:
+            transcript = None
     
     if st.button("Analyseer", use_container_width=True):
         if transcript:
@@ -126,7 +145,7 @@ def render_upload(gpt_service):
             st.session_state.step = "results"
             st.experimental_rerun()
         else:
-            st.error("Voer een transcript in of upload een bestand om te analyseren.")
+            st.error("Voer een transcript in, upload een bestand, of neem audio op om te analyseren.")
 
 def render_results():
     st.title("Analyse Resultaten")

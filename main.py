@@ -1,5 +1,7 @@
 import streamlit as st
 from gpt_service import GPTService
+from audio_service import AudioService
+from transcription_service import TranscriptionService
 import ui_components as ui
 
 st.set_page_config(page_title="AI Hypotheek Assistent", page_icon="🏠", layout="wide")
@@ -15,6 +17,8 @@ else:
         st.error("OPENAI_API_KEY is missing in API secrets. Please check your configuration.")
     else:
         gpt_service = GPTService(api_key=api_key)
+        audio_service = AudioService()
+        transcription_service = TranscriptionService()
 
 def main():
     if "step" not in st.session_state:
@@ -25,7 +29,7 @@ def main():
     if st.session_state.step == "choose_method":
         ui.render_choose_method()
     elif st.session_state.step == "upload":
-        ui.render_upload(gpt_service)
+        ui.render_upload(gpt_service, audio_service, transcription_service)
     elif st.session_state.step == "results":
         ui.render_results()
 
