@@ -67,10 +67,29 @@ def apply_custom_css():
         font-weight: bold;
         margin-top: 1em;
         margin-bottom: 0.5em;
+        background-color: #e2e8f0;
+        padding: 0.5em;
+        border-radius: 6px;
     }
 
     .result-title {
         font-weight: bold;
+        margin-top: 0.5em;
+    }
+
+    .feedback-card {
+        background-color: #f1f5f9;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-top: 2rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .feedback-title {
+        font-size: 1.2em;
+        font-weight: bold;
+        margin-bottom: 1em;
+        color: #3b82f6;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -115,13 +134,13 @@ def render_results():
     result = st.session_state.get("result", None)
     if result:
         for section, content in result.items():
-            st.markdown(f'<div class="section-title">{section.replace("_", " ").capitalize()}</div>', unsafe_allow_html=True)
-            lines = content.split('\n')
-            for line in lines:
-                if line.strip().startswith('**') and line.strip().endswith('**'):
-                    st.markdown(f'<div class="result-title">{line.strip()[2:-2]}</div>', unsafe_allow_html=True)
-                else:
-                    st.write(line)
+            with st.expander(section.replace("_", " ").capitalize(), expanded=True):
+                st.markdown(f'<div class="section-title">{section.replace("_", " ").capitalize()}</div>', unsafe_allow_html=True)
+                for line in content.split('\n'):
+                    if line.strip().startswith('**') and line.strip().endswith('**'):
+                        st.markdown(f'<div class="result-title">{line.strip()[2:-2]}</div>', unsafe_allow_html=True)
+                    else:
+                        st.write(line)
     else:
         st.warning("Er zijn geen resultaten beschikbaar.")
     
@@ -138,17 +157,26 @@ def render_progress_bar():
     st.progress(current_step / len(steps))
 
 def render_feedback_section():
-    with st.expander("Feedback geven"):
-        st.write("We waarderen uw feedback om onze service te verbeteren.")
+    st.markdown('<div class="feedback-card">', unsafe_allow_html=True)
+    st.markdown('<div class="feedback-title">Feedback geven</div>', unsafe_allow_html=True)
+    st.write("We waarderen uw feedback om onze service te verbeteren.")
+    
+    col1, col2 = st.columns(2)
+    with col1:
         user_name = st.text_input("Uw naam")
-        feedback_type = st.radio("Type feedback", ["Positief", "Negatief"])
-        feedback_text = st.text_area("Uw feedback")
-        if st.button("Verstuur Feedback"):
-            if user_name and feedback_text:
-                send_feedback_email(user_name, feedback_type, feedback_text)
-                st.success("Bedankt voor uw feedback!")
-            else:
-                st.error("Vul alstublieft uw naam en feedback in.")
+    with col2:
+        feedback_type = st.selectbox("Type feedback", ["Positief", "Negatief"])
+    
+    feedback_text = st.text_area("Uw feedback")
+    
+    if st.button("Verstuur Feedback", key="submit_feedback"):
+        if user_name and feedback_text:
+            send_feedback_email(user_name, feedback_type, feedback_text)
+            st.success("Bedankt voor uw feedback!")
+        else:
+            st.error("Vul alstublieft uw naam en feedback in.")
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
 def send_feedback_email(user_name, feedback_type, feedback_text):
     email_config = st.secrets["email"]
