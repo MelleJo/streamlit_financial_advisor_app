@@ -124,7 +124,7 @@ def render_upload(gpt_service, audio_service, transcription_service):
             process_transcript(transcript, gpt_service)
 
     elif st.session_state.upload_method == "file":
-        uploaded_file = st.file_uploader("Kies een bestand", type=["txt", "docx", "wav", "mp3"])
+        uploaded_file = st.file_uploader("Kies een bestand", type=["txt", "docx", "wav", "mp3", "m4a"])
         if uploaded_file:
             if uploaded_file.type.startswith('audio'):
                 with st.spinner("Audio wordt getranscribeerd..."):
