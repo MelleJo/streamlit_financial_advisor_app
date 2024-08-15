@@ -14,63 +14,70 @@ def apply_custom_css():
     }
     
     .main {
-        background-color: #f8fafc;
+        background-color: #f0f4f8;
+        padding: 2rem;
     }
     
     .stApp {
-        max-width: none;
+        max-width: 1100px;
+        margin: 0 auto;
+        padding-top: 2rem;
     }
     
     h1 {
         color: #1e293b;
         font-weight: 700;
+        text-align: center;
+        margin-bottom: 1rem;
     }
     
     h2, h3 {
         color: #334155;
         font-weight: 600;
+        margin-bottom: 0.5rem;
     }
-    
+
     .stButton>button {
         color: #ffffff;
-        background-color: #3b82f6;
+        background-color: #2563eb;
         border: none;
-        border-radius: 6px;
+        border-radius: 8px;
         padding: 0.75rem 1.5rem;
         font-weight: 500;
         transition: all 0.3s ease;
         width: 100%;
+        box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
     }
     
     .stButton>button:hover {
-        background-color: #2563eb;
-        box-shadow: 0 4px 6px rgba(37, 99, 235, 0.1);
+        background-color: #1d4ed8;
+        box-shadow: 0 6px 12px rgba(29, 78, 216, 0.25);
+    }
+
+    .stButton>button:active {
+        background-color: #1e40af;
+        box-shadow: 0 3px 6px rgba(30, 64, 175, 0.2);
     }
     
     .stTextInput>div>div>input, .stTextArea>div>div>textarea {
-        border-radius: 6px;
+        border-radius: 8px;
+        border: 1px solid #d1d5db;
+        padding: 0.5rem;
     }
-    
-    .result-card {
-        background-color: #ffffff;
-        border-radius: 10px;
-        padding: 1.5rem;
-        margin-bottom: 1rem;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    }
-    
-    .stProgress > div > div > div > div {
-        background-color: #3b82f6;
+
+    .stTextInput>div>div>input:focus, .stTextArea>div>div>textarea:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
     }
 
     .section-title {
-        font-size: 1.2em;
+        font-size: 1.25em;
         font-weight: bold;
         margin-top: 1em;
         margin-bottom: 0.5em;
-        background-color: #e2e8f0;
-        padding: 0.5em;
-        border-radius: 6px;
+        background-color: #e5e7eb;
+        padding: 0.75rem;
+        border-radius: 8px;
     }
 
     .result-title {
@@ -79,41 +86,50 @@ def apply_custom_css():
     }
 
     .feedback-card {
-        background-color: #f1f5f9;
+        background-color: #f9fafb;
         border-radius: 10px;
-        padding: 1.5rem;
+        padding: 2rem;
         margin-top: 2rem;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
     }
 
     .feedback-title {
-        font-size: 1.2em;
+        font-size: 1.25em;
         font-weight: bold;
-        margin-bottom: 1em;
-        color: #3b82f6;
+        margin-bottom: 1.5em;
+        color: #2563eb;
     }
+
+    .stProgress > div > div > div > div {
+        background-color: #3b82f6;
+    }
+
+    .st-expander {
+        background-color: #f3f4f6;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+    }
+
+    .st-expander-header {
+        font-weight: bold;
+        font-size: 1.15em;
+    }
+    
     </style>
     """, unsafe_allow_html=True)
 
 def render_choose_method():
     st.title("AI Hypotheek Assistent")
     
-    col1, col2, col3 = st.columns(3)
+    st.markdown("<p style='text-align: center; margin-bottom: 1.5rem;'>Welkom bij de AI Hypotheek Assistent. Maak een keuze uit de onderstaande methoden om te beginnen.</p>", unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 1, 1], gap="large")
     with col1:
-        if st.button("📝 Handmatige Invoer", use_container_width=True, key="choose_manual_input"):
-            st.session_state.upload_method = "manual"
-            st.session_state.step = "upload"
-            st.rerun()
+        st.button("📝 Handmatige Invoer", use_container_width=True, key="choose_manual_input")
     with col2:
-        if st.button("📁 Bestand Uploaden", use_container_width=True, key="choose_file_upload"):
-            st.session_state.upload_method = "file"
-            st.session_state.step = "upload"
-            st.rerun()
+        st.button("📁 Bestand Uploaden", use_container_width=True, key="choose_file_upload")
     with col3:
-        if st.button("🎙️ Audio Opnemen", use_container_width=True, key="choose_audio_record"):
-            st.session_state.upload_method = "audio"
-            st.session_state.step = "upload"
-            st.rerun()
+        st.button("🎙️ Audio Opnemen", use_container_width=True, key="choose_audio_record")
 
 def render_upload(gpt_service, audio_service, transcription_service):
     st.title("Transcript Invoer")
