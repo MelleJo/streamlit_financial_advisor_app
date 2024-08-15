@@ -17,12 +17,6 @@ def main():
 
     if selected == "Home" or st.session_state.page == "home":
         ui.render_home_screen()
-        if st.session_state.get("home_manual_input", False):
-            st.session_state.page = "input"
-            st.experimental_rerun()
-        elif st.session_state.get("home_file_upload", False):
-            st.session_state.page = "upload"
-            st.experimental_rerun()
     elif selected == "Handmatige Invoer" or st.session_state.page == "input":
         ui.render_input_screen(gpt_service)
     elif selected == "Bestand Uploaden" or st.session_state.page == "upload":

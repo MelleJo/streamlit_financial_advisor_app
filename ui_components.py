@@ -1,7 +1,6 @@
 import streamlit as st
 from streamlit_option_menu import option_menu
 from streamlit_extras.colored_header import colored_header
-import streamlit.components.v1 as components
 
 def apply_custom_css():
     st.markdown("""
@@ -119,9 +118,13 @@ def render_home_screen():
 
     col1, col2 = st.columns(2)
     with col1:
-        st.button("📝 Handmatige Invoer", use_container_width=True, key="home_manual_input")
+        if st.button("📝 Handmatige Invoer", use_container_width=True, key="home_manual_input"):
+            st.session_state.page = "input"
+            st.experimental_rerun()
     with col2:
-        st.button("📁 Bestand Uploaden", use_container_width=True, key="home_file_upload")
+        if st.button("📁 Bestand Uploaden", use_container_width=True, key="home_file_upload"):
+            st.session_state.page = "upload"
+            st.experimental_rerun()
 
 def render_input_screen(gpt_service):
     colored_header(
