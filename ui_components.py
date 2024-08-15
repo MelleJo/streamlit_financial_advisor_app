@@ -4,6 +4,8 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import docx
 
+import streamlit as st
+
 def apply_custom_css():
     st.markdown("""
     <style>
@@ -21,18 +23,20 @@ def apply_custom_css():
         padding: 2rem;
         height: 100vh;
         display: flex;
+        flex-direction: column;
         justify-content: center;
         align-items: center;
     }
 
     .stApp {
         width: 100%;
-        max-width: 90%;
+        max-width: 1100px;
         padding-top: 2rem;
         background-color: #ffffff;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
         border-radius: 12px;
         padding: 2rem;
+        margin: 0 auto;
     }
 
     h1 {
@@ -40,7 +44,7 @@ def apply_custom_css():
         font-weight: 800;
         text-align: center;
         margin-bottom: 1.5rem;
-        font-size: 3rem;
+        font-size: 2.5rem;
         text-transform: uppercase;
         letter-spacing: 2px;
     }
@@ -166,13 +170,21 @@ def render_choose_method():
     
     st.markdown("<p>Kies een methode om te beginnen:</p>", unsafe_allow_html=True)
     
-    col1, col2, col3 = st.columns(3)
+    # Use columns to arrange the buttons horizontally
+    col1, col2, col3 = st.columns([1, 1, 1])
     with col1:
-        st.button("📝 Handmatige Invoer", use_container_width=True, key="choose_manual_input")
+        if st.button("📝 Handmatige Invoer", use_container_width=True):
+            st.session_state.step = "upload"
     with col2:
-        st.button("📁 Bestand Uploaden", use_container_width=True, key="choose_file_upload")
+        if st.button("📁 Bestand Uploaden", use_container_width=True):
+            st.session_state.step = "upload"
     with col3:
-        st.button("🎙️ Audio Opnemen", use_container_width=True, key="choose_audio_record")
+        if st.button("🎙️ Audio Opnemen", use_container_width=True):
+            st.session_state.step = "upload"
+            
+    # Ensure layout works correctly even on different screen sizes
+    st.write("")
+    st.write("")
 
 
 
