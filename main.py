@@ -19,10 +19,13 @@ else:
     # Apply custom CSS for improved UI
     apply_custom_css()
 
-    # Main logic to handle steps in the app
+    # Initialize the session state if not already initialized
     if 'step' not in st.session_state:
         st.session_state.step = "choose_method"
+    if 'upload_method' not in st.session_state:
+        st.session_state.upload_method = None
 
+    # Main logic to handle steps in the app
     if st.session_state.step == "choose_method":
         render_choose_method()
     elif st.session_state.step == "upload":

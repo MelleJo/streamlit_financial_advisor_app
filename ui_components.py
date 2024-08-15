@@ -193,6 +193,10 @@ def render_upload(gpt_service, audio_service, transcription_service):
     st.title("Transcript Invoer")
     transcript = None
 
+    # Ensure upload_method is initialized
+    if 'upload_method' not in st.session_state:
+        st.session_state.upload_method = None
+
     if st.session_state.upload_method == "manual":
         transcript = st.text_area("Voer het transcript in:", height=300)
         if st.button("Analyseer", use_container_width=True):
