@@ -12,25 +12,35 @@ def apply_custom_css():
     html, body, [class*="css"] {
         font-family: 'Inter', sans-serif;
         color: #1f2937;
+        height: 100%;
+        width: 100%;
     }
 
     .main {
         background: linear-gradient(135deg, #e2e8f0, #f8fafc);
         padding: 2rem;
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
     }
 
     .stApp {
-        max-width: 1200px;
-        margin: 0 auto;
+        width: 100%;
+        max-width: 90%;
         padding-top: 2rem;
+        background-color: #ffffff;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        border-radius: 12px;
+        padding: 2rem;
     }
 
     h1 {
         color: #111827;
         font-weight: 800;
         text-align: center;
-        margin-bottom: 2rem;
-        font-size: 2.8rem;
+        margin-bottom: 1.5rem;
+        font-size: 3rem;
         text-transform: uppercase;
         letter-spacing: 2px;
     }
@@ -58,7 +68,10 @@ def apply_custom_css():
         font-size: 1.2rem;
         transition: all 0.3s ease;
         width: 100%;
+        max-width: 300px;
+        margin: 0 auto;
         box-shadow: 0 10px 25px rgba(59, 130, 246, 0.4);
+        display: block;
     }
     
     .stButton>button:hover {
@@ -153,13 +166,14 @@ def render_choose_method():
     
     st.markdown("<p>Kies een methode om te beginnen:</p>", unsafe_allow_html=True)
     
-    col1, col2, col3 = st.columns([1, 1, 1], gap="large")
+    col1, col2, col3 = st.columns(3)
     with col1:
         st.button("📝 Handmatige Invoer", use_container_width=True, key="choose_manual_input")
     with col2:
         st.button("📁 Bestand Uploaden", use_container_width=True, key="choose_file_upload")
     with col3:
         st.button("🎙️ Audio Opnemen", use_container_width=True, key="choose_audio_record")
+
 
 
 
