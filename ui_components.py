@@ -179,27 +179,24 @@ def render_feedback_section():
 
 def send_feedback_email(user_name, feedback_type, feedback_text):
     try:
-        # Print all available secret keys (but not their values) for debugging
-        st.write("Available secret keys:", list(st.secrets.keys()))
-
         # Check if email configuration exists in secrets
         if 'email' not in st.secrets:
             st.error("Email configuration is missing in secrets. Please check your secrets.toml file.")
             return
 
         # Access email configuration
-        email_config = st.secrets['email']
+        email_config = st.secrets.email
 
         # Check if all required email configuration fields are present
         required_fields = ['username', 'password', 'smtp_server', 'smtp_port', 'receiving_email']
-        missing_fields = [field for field in required_fields if field not in email_config]
+        missing_fields = [field for field in required_fields if not hasattr(email_config, field)]
         if missing_fields:
-            st.error(f"Missing email configuration fields: {', '.join(missing_fields)}")
+            st.error(f"Missing email configuration fields: {', '.join(missing_fields)}.")
             return
 
         msg = MIMEMultipart()
-        msg['From'] = email_config['username']
-        msg['To'] = email_config['receiving_email']
+        msg['From'] = email_config.username
+        msg['To'] = email_config.receiving_email
         msg['Subject'] = f"AI Hypotheek Assistent Feedback - {feedback_type}"
 
         body = f"""
@@ -216,11 +213,11 @@ def send_feedback_email(user_name, feedback_type, feedback_text):
 
         msg.attach(MIMEText(body, 'plain'))
 
-        server = smtplib.SMTP(email_config['smtp_server'], email_config['smtp_port'])
+        server = smtplib.SMTP(email_config.smtp_server, email_config.smtp_port)
         server.starttls()
-        server.login(email_config['username'], email_config['password'])
+        server.login(email_config.username, email_config.password)
         text = msg.as_string()
-        server.sendmail(email_config['username'], email_config['receiving_email'], text)
+        server.sendmail(email_config.username, email_config.receiving_email, text)
         server.quit()
         st.success("Feedback successfully sent!")
     except Exception as e:
