@@ -11,63 +11,79 @@ def apply_custom_css():
     
     html, body, [class*="css"] {
         font-family: 'Inter', sans-serif;
+        color: #1f2937;
     }
-    
+
     .main {
-        background-color: #f0f4f8;
+        background-color: #f3f4f6;
         padding: 2rem;
     }
-    
+
     .stApp {
-        max-width: 1100px;
+        max-width: 1000px;
         margin: 0 auto;
         padding-top: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        background-color: #ffffff;
     }
-    
+
     h1 {
-        color: #1e293b;
-        font-weight: 700;
+        color: #1f2937;
+        font-weight: 800;
         text-align: center;
-        margin-bottom: 1rem;
+        margin-bottom: 1.5rem;
+        font-size: 2.5rem;
     }
     
+    p {
+        text-align: center;
+        font-size: 1.1rem;
+        color: #4b5563;
+    }
+
     h2, h3 {
-        color: #334155;
+        color: #374151;
         font-weight: 600;
         margin-bottom: 0.5rem;
     }
 
     .stButton>button {
         color: #ffffff;
-        background-color: #2563eb;
+        background-color: #3b82f6;
         border: none;
         border-radius: 8px;
         padding: 0.75rem 1.5rem;
-        font-weight: 500;
+        font-weight: 600;
+        font-size: 1.1rem;
         transition: all 0.3s ease;
         width: 100%;
-        box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+        box-shadow: 0 6px 15px rgba(59, 130, 246, 0.3);
     }
     
     .stButton>button:hover {
-        background-color: #1d4ed8;
-        box-shadow: 0 6px 12px rgba(29, 78, 216, 0.25);
+        background-color: #2563eb;
+        box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
+        transform: translateY(-2px);
     }
 
     .stButton>button:active {
         background-color: #1e40af;
-        box-shadow: 0 3px 6px rgba(30, 64, 175, 0.2);
+        box-shadow: 0 4px 10px rgba(30, 64, 175, 0.4);
+        transform: translateY(0);
     }
-    
+
     .stTextInput>div>div>input, .stTextArea>div>div>textarea {
         border-radius: 8px;
         border: 1px solid #d1d5db;
-        padding: 0.5rem;
+        padding: 0.6rem;
+        font-size: 1rem;
+        color: #374151;
     }
 
     .stTextInput>div>div>input:focus, .stTextArea>div>div>textarea:focus {
         border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3);
     }
 
     .section-title {
@@ -78,23 +94,25 @@ def apply_custom_css():
         background-color: #e5e7eb;
         padding: 0.75rem;
         border-radius: 8px;
+        color: #111827;
     }
 
     .result-title {
         font-weight: bold;
         margin-top: 0.5em;
+        color: #111827;
     }
 
     .feedback-card {
         background-color: #f9fafb;
-        border-radius: 10px;
+        border-radius: 12px;
         padding: 2rem;
         margin-top: 2rem;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
     }
 
     .feedback-title {
-        font-size: 1.25em;
+        font-size: 1.3em;
         font-weight: bold;
         margin-bottom: 1.5em;
         color: #2563eb;
@@ -108,11 +126,19 @@ def apply_custom_css():
         background-color: #f3f4f6;
         border-radius: 8px;
         margin-bottom: 1rem;
+        border: 1px solid #e5e7eb;
     }
 
     .st-expander-header {
         font-weight: bold;
-        font-size: 1.15em;
+        font-size: 1.2em;
+        color: #111827;
+    }
+
+    .st-expander-content {
+        font-size: 1rem;
+        color: #4b5563;
+        padding-top: 0.75rem;
     }
     
     </style>
@@ -121,7 +147,7 @@ def apply_custom_css():
 def render_choose_method():
     st.title("AI Hypotheek Assistent")
     
-    st.markdown("<p style='text-align: center; margin-bottom: 1.5rem;'>Welkom bij de AI Hypotheek Assistent. Maak een keuze uit de onderstaande methoden om te beginnen.</p>", unsafe_allow_html=True)
+    st.markdown("<p>Welkom bij de AI Hypotheek Assistent. Kies een methode om te beginnen:</p>", unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([1, 1, 1], gap="large")
     with col1:
@@ -130,6 +156,7 @@ def render_choose_method():
         st.button("📁 Bestand Uploaden", use_container_width=True, key="choose_file_upload")
     with col3:
         st.button("🎙️ Audio Opnemen", use_container_width=True, key="choose_audio_record")
+
 
 def render_upload(gpt_service, audio_service, transcription_service):
     st.title("Transcript Invoer")
