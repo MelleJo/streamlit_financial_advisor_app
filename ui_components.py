@@ -153,20 +153,35 @@ def render_upload(app_state, services):
                 st.error("Er is een fout opgetreden bij het verwerken van het bestand.")
 
     else:  # audio recording
-        if st.button("Start Opname"):
-            with st.spinner("Audio wordt opgenomen..."):
-                audio_bytes = services['audio_service'].record_audio()
-            
-            if audio_bytes:
-                with st.spinner("Audio wordt getranscribeerd..."):
-                    transcript = services['transcription_service'].transcribe(audio_bytes)
-                
-                if transcript:
-                    st.text_area("Transcript (bewerk indien nodig):", value=transcript, height=300, key="editable_transcript")
-                    if st.button("Analyseer", use_container_width=True):
-                        process_transcript(st.session_state.editable_transcript, services['gpt_service'], app_state)
-                else:
-                    st.error("Er is een fout opgetreden bij het transcriberen van de audio.")
+        if 'recording' not in st.session_state:
+            st.session_state.recording = False
+            st.session_state.audio_bytes = None
+
+        if not st.session_state.recording:
+            if st.button("Start Opname"):
+                st.session_state.recording = True
+                st.session_state.audio_bytes = services['audio_service'].start_recording()
+                st.rerun()
+        else:
+            if st.button("Stop Opname"):
+                with st.spinner("Audio wordt verwerkt..."):
+                    audio_bytes = services['audio_service'].stop_recording(st.session_state.audio_bytes)
+                    st.session_state.recording = False
+                    st.session_state.audio_bytes = None
+                    
+                    if audio_bytes:
+                        with st.spinner("Audio wordt getranscribeerd..."):
+                            transcript = services['transcription_service'].transcribe(audio_bytes)
+                        
+                        if transcript:
+                            st.text_area("Transcript (bewerk indien nodig):", value=transcript, height=300, key="editable_transcript")
+                            if st.button("Analyseer", use_container_width=True):
+                                process_transcript(st.session_state.editable_transcript, services['gpt_service'], app_state)
+                        else:
+                            st.error("Er is een fout opgetreden bij het transcriberen van de audio.")
+                    else:
+                        st.error("Er is een fout opgetreden bij het opnemen van de audio.")
+                st.rerun()
 
 def process_transcript(transcript, gpt_service, app_state):
     if transcript:
