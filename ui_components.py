@@ -148,8 +148,7 @@ def render_upload(app_state, services):
             
             if transcript:
                 st.success("Bestand succesvol verwerkt.")
-                st.write("Transcript:")
-                st.text_area("Edit transcript if needed:", value=transcript, height=300, key="editable_transcript")
+                st.text_area("Transcript (bewerk indien nodig):", value=transcript, height=300, key="editable_transcript")
                 if st.button("Analyseer", use_container_width=True):
                     process_transcript(st.session_state.editable_transcript, services['gpt_service'], app_state)
             else:
@@ -163,8 +162,7 @@ def render_upload(app_state, services):
             
             if transcript:
                 st.success("Audio succesvol opgenomen en getranscribeerd.")
-                st.write("Transcript:")
-                st.text_area("Edit transcript if needed:", value=transcript, height=300, key="editable_transcript")
+                st.text_area("Transcript (bewerk indien nodig):", value=transcript, height=300, key="editable_transcript")
                 if st.button("Analyseer", use_container_width=True):
                     process_transcript(st.session_state.editable_transcript, services['gpt_service'], app_state)
             else:
