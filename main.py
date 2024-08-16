@@ -28,12 +28,18 @@ def main():
 
     ui.render_progress_bar(st.session_state.app_state)
 
-    if st.session_state.app_state.step == "choose_method":
+    current_step = st.session_state.app_state.step
+
+    if current_step == "choose_method":
         ui.render_choose_method(st.session_state.app_state)
-    elif st.session_state.app_state.step == "upload":
+    elif current_step == "upload":
         ui.render_upload(st.session_state.app_state, services)
-    elif st.session_state.app_state.step == "results":
+    elif current_step == "results":
         ui.render_results(st.session_state.app_state)
+
+    # Check if the step has changed
+    if current_step != st.session_state.app_state.step:
+        st.rerun()
 
 if __name__ == "__main__":
     main()
