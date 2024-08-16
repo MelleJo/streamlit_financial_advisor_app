@@ -4,6 +4,13 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from docx import Document
 from io import BytesIO
+import logging
+
+# Configure logging
+logging.basicConfig(filename='app.log', level=logging.INFO, 
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
 
 def apply_custom_css():
     st.markdown("""
@@ -167,11 +174,18 @@ def render_upload(app_state, services):
 def process_transcript(transcript, gpt_service, app_state):
     if transcript:
         with st.spinner("Bezig met analyseren..."):
+            logger.info("Starting transcript analysis")
             result = gpt_service.analyze_transcript(transcript)
-        app_state.set_result(result)
-        app_state.set_transcript(transcript)
-        app_state.set_step("results")
+            logger.info("Transcript analysis completed")
+        if result:
+            app_state.set_result(result)
+            app_state.set_transcript(transcript)
+            app_state.set_step("results")
+        else:
+            logger.error("Error occurred during transcript analysis")
+            st.error("Er is een fout opgetreden bij het analyseren van het transcript.")
     else:
+        logger.warning("No transcript to analyze")
         st.error("Er is geen transcript om te analyseren. Voer een transcript in, upload een bestand, of neem audio op.")
 
 def render_results(app_state):

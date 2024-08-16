@@ -1,7 +1,12 @@
-import streamlit as st
+import logging
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
+
+# Configure logging
+logging.basicConfig(filename='app.log', level=logging.INFO, 
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 class GPTService:
     def __init__(self, api_key):
@@ -18,15 +23,14 @@ class GPTService:
         return prompt_template
 
     def analyze_transcript(self, transcript):
-        st.subheader("Analyzing Transcript")
-        with st.spinner("Analyzing..."):
-            try:
-                result = self.chain.run(transcript=transcript)
-                st.success("Analysis complete!")
-                return self._parse_result(result)
-            except Exception as e:
-                st.error(f"An error occurred during analysis: {str(e)}")
-                return None
+        logger.info("Analyzing Transcript")
+        try:
+            result = self.chain.run(transcript=transcript)
+            logger.info("Analysis complete!")
+            return self._parse_result(result)
+        except Exception as e:
+            logger.error(f"An error occurred during analysis: {str(e)}")
+            return None
 
     def _parse_result(self, result):
         sections = {
