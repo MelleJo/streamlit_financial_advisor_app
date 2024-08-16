@@ -36,7 +36,7 @@ def main():
         if "app_state" not in st.session_state:
             st.session_state.app_state = AppState()
 
-        ui.render_progress_bar(st.session_state.app_state.step)
+        ui.render_progress_bar(st.session_state.app_state)
 
         if st.session_state.app_state.step == "choose_method":
             ui.render_choose_method(st.session_state.app_state)
