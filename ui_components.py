@@ -137,9 +137,8 @@ def render_upload(app_state, services):
     elif app_state.upload_method == "file":
         uploaded_file = st.file_uploader("Kies een bestand", type=["txt", "docx", "wav", "mp3", "m4a"])
         if uploaded_file:
-            st.write(f"File name: {uploaded_file.name}")
-            st.write(f"File type: {uploaded_file.type}")
-            st.write(f"File size: {uploaded_file.size} bytes")
+            # Log file information instead of displaying it
+            logger.info(f"Uploaded file: {uploaded_file.name}, Type: {uploaded_file.type}, Size: {uploaded_file.size} bytes")
             
             if uploaded_file.type.startswith('audio') or uploaded_file.name.lower().endswith(('.wav', '.mp3', '.m4a')):
                 with st.spinner("Audio wordt getranscribeerd..."):
