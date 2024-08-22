@@ -19,7 +19,7 @@ def initialize_services():
 
 def main():
     st.title("AI Hypotheek Assistent 🏠")
-    st.write("Welkom bij de AI Hypotheek Assistent. Deze tool helpt u bij het verwerken van uw hypotheekaanvraag.")
+    st.write("Testversie 0.0.1.")
 
     services = initialize_services()
     
