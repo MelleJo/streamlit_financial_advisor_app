@@ -109,7 +109,7 @@ def render_progress_bar(app_state):
     st.progress(current_step / len(steps))
 
 def render_choose_method(app_state):
-    st.title("AI Hypotheek Assistent")
+    st.title("Kies de wijze van input")
     
     col1, col2, col3 = st.columns(3)
     with col1:
