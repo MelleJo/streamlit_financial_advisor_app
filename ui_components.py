@@ -113,15 +113,15 @@ def render_choose_method(app_state):
     
     col1, col2, col3 = st.columns(3)
     with col1:
-        if st.button("📝 Handmatige Invoer", use_container_width=True):
+        if st.button("📝 Handmatige invoer", use_container_width=True):
             app_state.set_upload_method("manual")
             app_state.set_step("upload")
     with col2:
-        if st.button("📁 Bestand Uploaden", use_container_width=True):
+        if st.button("📁 Bestand uploaden", use_container_width=True):
             app_state.set_upload_method("file")
             app_state.set_step("upload")
     with col3:
-        if st.button("🎙️ Audio Opnemen", use_container_width=True):
+        if st.button("🎙️ Audio opnemen", use_container_width=True):
             app_state.set_upload_method("audio")
             app_state.set_step("upload")
 
