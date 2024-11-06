@@ -165,6 +165,17 @@ def apply_custom_css():
         line-height: 1.5;
         color: #334155;
     }
+
+    .term-highlight {
+        background-color: #E8F0FE;
+        padding: 2px 6px;
+        border-radius: 4px;
+        color: #1a73e8;
+        font-weight: 500;
+        cursor: pointer;
+        border: none;
+        margin: 0 2px;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -489,7 +500,6 @@ def format_text_with_definitions(text, section_key):
                         current_text[start:end], 
                         key=button_key,
                         help="Klik voor uitleg",
-                        type="secondary",
                         use_container_width=False
                     ):
                         st.session_state.selected_term = term
@@ -521,12 +531,12 @@ def format_text_with_definitions(text, section_key):
                         type="primary",
                         use_container_width=True,
                         key=f"add_{section_key}"):
-                
-                verbeterde_tekst = improve_explanation(
+                        
+                enhanced_text = improve_explanation(
                     st.session_state.selected_term,
                     MORTGAGE_DEFINITIONS[st.session_state.selected_term],
                     text,
                     st.session_state.openai_client
                 )
-                st.session_state.enhanced_texts[section_key] = verbeterde_tekst
-                st.success("Uitleg is toegevoegd! Ververs de pagina om de wijzigingen te zien.")
+                st.session_state.enhanced_texts[section_key] = enhanced_text
+                st._rerun()
