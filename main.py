@@ -19,7 +19,7 @@ def initialize_services():
 
 def main():
     st.title("AI Hypotheek Assistent 🏠")
-    st.write("Testversie 0.0.1.")
+    st.write("Versie 0.0.2")
 
     services = initialize_services()
     
@@ -30,12 +30,20 @@ def main():
 
     current_step = st.session_state.app_state.step
 
-    if current_step == "choose_method":
+    if current_step == "select_persons":
+        ui.render_person_selection(st.session_state.app_state)
+    elif current_step == "person_details":
+        ui.render_person_details(st.session_state.app_state)
+    elif current_step == "choose_method":
         ui.render_choose_method(st.session_state.app_state)
     elif current_step == "upload":
         ui.render_upload(st.session_state.app_state, services)
     elif current_step == "results":
         ui.render_results(st.session_state.app_state)
+
+    # Show version info in footer
+    st.markdown("---")
+    st.markdown("*AI Hypotheek Assistent - v0.0.2*")
 
     # Check if the step has changed
     if current_step != st.session_state.app_state.step:

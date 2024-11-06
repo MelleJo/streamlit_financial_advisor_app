@@ -22,10 +22,24 @@ class GPTService:
             prompt_template = file.read()
         return prompt_template
 
-    def analyze_transcript(self, transcript):
+    def analyze_transcript(self, transcript, app_state=None):
         logger.info("Analyzing Transcript")
         try:
-            result = self.chain.run(transcript=transcript)
+            # Prepare person details string
+            person_details = ""
+            if app_state and app_state.person_details:
+                for person_id, details in app_state.person_details.items():
+                    person_details += f"\nPersoon {person_id.split('_')[1]}:\n"
+                    for key, value in details.items():
+                        person_details += f"- {key}: {value}\n"
+
+            # Run the analysis
+            result = self.chain.run(
+                transcript=transcript,
+                number_of_persons=app_state.number_of_persons if app_state else "Onbekend",
+                person_details=person_details if person_details else "Geen details beschikbaar"
+            )
+            
             logger.info("Analysis complete!")
             return self._parse_result(result)
         except Exception as e:

@@ -104,9 +104,28 @@ def apply_custom_css():
     """, unsafe_allow_html=True)
 
 def render_progress_bar(app_state):
-    steps = ["choose_method", "upload", "results"]
-    current_step = steps.index(app_state.step) + 1
-    st.progress(current_step / len(steps))
+    steps = {
+        "select_persons": "Personen",
+        "person_details": "Gegevens",
+        "choose_method": "Methode",
+        "upload": "Invoer",
+        "results": "Resultaten"
+    }
+    current_step = app_state.step
+    step_list = list(steps.keys())
+    current_step_index = step_list.index(current_step)
+    progress = (current_step_index + 1) / len(steps)
+    
+    st.progress(progress)
+    cols = st.columns(len(steps))
+    for i, (step, label) in enumerate(steps.items()):
+        with cols[i]:
+            if step_list.index(step) < current_step_index:
+                st.markdown(f"✅ {label}")
+            elif step == current_step:
+                st.markdown(f"**🔵 {label}**")
+            else:
+                st.markdown(f"⚪ {label}")
 
 def render_choose_method(app_state):
     
@@ -298,3 +317,81 @@ def export_to_docx(result):
         file_name="analyse_resultaten.docx",
         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     )
+
+def render_person_selection(app_state):
+    st.title("Personen Selectie")
+    st.write("Selecteer het aantal personen voor het hypotheekadvies")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        number_of_persons = st.radio(
+            "Aantal personen",
+            options=[1, 2],
+            format_func=lambda x: f"{x} {'persoon' if x == 1 else 'personen'}"
+        )
+        
+        if st.button("Bevestig aantal personen", use_container_width=True):
+            app_state.set_number_of_persons(number_of_persons)
+            app_state.set_step("person_details")
+            
+    with col2:
+        st.info("""
+        💡 Tip: Selecteer het aantal personen dat betrokken is bij de hypotheekaanvraag. 
+        Dit helpt ons om een gepersonaliseerd advies te geven voor elk scenario.
+        """)
+
+def render_person_details(app_state):
+    st.title("Persoonlijke Gegevens")
+    st.write("Vul de gegevens in voor alle betrokken personen")
+    
+    all_filled = True
+    
+    for person_id, details in app_state.person_details.items():
+        person_number = person_id.split("_")[1]
+        with st.expander(f"Persoon {person_number}", expanded=True):
+            name = st.text_input(
+                "Naam",
+                key=f"{person_id}_name",
+                value=details.get("name", "")
+            )
+            
+            employment_status = st.selectbox(
+                "Arbeidssituatie",
+                options=["Loondienst", "Zelfstandig", "Werkloos", "Pensioen"],
+                key=f"{person_id}_employment",
+                index=None
+            )
+            
+            if employment_status in ["Loondienst", "Zelfstandig"]:
+                income = st.number_input(
+                    "Jaarinkomen",
+                    min_value=0,
+                    max_value=1000000,
+                    step=1000,
+                    key=f"{person_id}_income",
+                    format="%d"
+                )
+            else:
+                income = 0
+            
+            pension_status = st.selectbox(
+                "Pensioensituatie",
+                options=["Nog niet in pensioen", "Bijna in pensioen", "In pensioen"],
+                key=f"{person_id}_pension",
+                index=None
+            )
+            
+            app_state.set_person_detail(person_id, "name", name)
+            app_state.set_person_detail(person_id, "employment_status", employment_status)
+            app_state.set_person_detail(person_id, "pension_status", pension_status)
+            app_state.set_person_detail(person_id, "income", income)
+            
+            if not name or not employment_status or not pension_status:
+                all_filled = False
+    
+    if st.button("Ga door naar advies", use_container_width=True):
+        if all_filled:
+            app_state.set_step("choose_method")
+        else:
+            st.error("Vul alstublieft alle verplichte velden in voordat u doorgaat.")
