@@ -124,6 +124,27 @@ def apply_custom_css():
         border-radius: 0.5rem;
         margin-bottom: 1rem;
     }
+    .stButton button {
+        padding: 0;
+        border: none;
+        background: none;
+        color: #2563eb;
+        text-decoration: underline;
+        cursor: pointer;
+        margin: 0 2px;
+        display: inline-block;
+    }
+    
+    .stButton button:hover {
+        color: #1e40af;
+        background: #f0f9ff;
+    }
+    
+    .definition-panel {
+        border-left: 3px solid #2563eb;
+        padding-left: 1rem;
+        margin-top: 1rem;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -420,36 +441,49 @@ def render_person_details(app_state):
 def format_text_with_definitions(text):
     """Format text by highlighting defined terms and making them clickable."""
     from definitions import MORTGAGE_DEFINITIONS
+    import re
     
-    # Don't process if text is None
     if not text:
         return text
     
-    # Create columns for the layout
     col1, col2 = st.columns([2, 1])
     
-    # Initialize session state for selected term if it doesn't exist
     if 'selected_term' not in st.session_state:
         st.session_state.selected_term = None
     
     with col1:
-        # Process the text and add buttons for defined terms
+        current_text = text
         for term in MORTGAGE_DEFINITIONS.keys():
-            if term.lower() in text.lower():
-                # Split text by the term (case-insensitive)
-                import re
-                parts = re.split(f'({term})', text, flags=re.IGNORECASE)
-                
-                # Rebuild text with buttons for the term
-                for part in parts:
-                    if part.lower() == term.lower():
-                        if st.button(part, key=f"term_{part}_{hash(text)}"):
-                            st.session_state.selected_term = term
-                    else:
-                        st.write(part, unsafe_allow_html=True)
+            # Create pattern that matches whole words only
+            pattern = r'\b' + re.escape(term) + r'\b'
             
+            # Case insensitive search
+            matches = list(re.finditer(pattern, current_text, re.IGNORECASE))
+            
+            if matches:
+                # Process text from end to start to maintain indices
+                for match in reversed(matches):
+                    start, end = match.span()
+                    # Create unique key for each button
+                    button_key = f"term_{term}_{start}_{end}_{hash(text)}"
+                    
+                    # Split and insert button
+                    if st.button(current_text[start:end], key=button_key, 
+                               help="Klik voor uitleg", 
+                               type="secondary", 
+                               use_container_width=False):
+                        st.session_state.selected_term = term
+                    
+                    # Add the rest of the text
+                    st.write(current_text[end:], unsafe_allow_html=True)
+                    current_text = current_text[:start]
+                
+                # Write any remaining text
+                if current_text:
+                    st.write(current_text, unsafe_allow_html=True)
+    
     with col2:
-        # Show explanation if a term is selected
         if st.session_state.selected_term:
-            with st.expander(st.session_state.selected_term, expanded=True):
+            with st.expander("📚 Uitleg", expanded=True):
+                st.markdown("### " + st.session_state.selected_term)
                 st.markdown(MORTGAGE_DEFINITIONS[st.session_state.selected_term])
