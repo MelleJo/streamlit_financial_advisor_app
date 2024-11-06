@@ -539,4 +539,4 @@ def format_text_with_definitions(text, section_key):
                     st.session_state.openai_client
                 )
                 st.session_state.enhanced_texts[section_key] = enhanced_text
-                st._rerun()
+                st.rerun()
