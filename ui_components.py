@@ -275,8 +275,8 @@ def render_results(app_state):
         for section, content in result.items():
             with st.expander(section.replace("_", " ").capitalize(), expanded=True):
                 st.markdown(f'<div class="section-title">{section.replace("_", " ").capitalize()}</div>', unsafe_allow_html=True)
-                # Use the new format_text_with_definitions function
-                format_text_with_definitions(content)
+                # Pass the section name as section_key
+                format_text_with_definitions(content, section)
         
         if st.button("Exporteer als Word-document", use_container_width=True):
             export_to_docx(result)
