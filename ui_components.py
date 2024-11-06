@@ -484,6 +484,7 @@ def format_text_with_definitions(text):
     
     with col2:
         if st.session_state.selected_term:
-            with st.expander("📚 Uitleg", expanded=True):
-                st.markdown("### " + st.session_state.selected_term)
-                st.markdown(MORTGAGE_DEFINITIONS[st.session_state.selected_term])
+            st.markdown("---")
+            st.markdown("### 📚 " + st.session_state.selected_term)
+            st.markdown(MORTGAGE_DEFINITIONS[st.session_state.selected_term])
+            st.markdown("---")
