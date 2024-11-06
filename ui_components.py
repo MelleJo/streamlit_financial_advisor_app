@@ -100,6 +100,30 @@ def apply_custom_css():
         margin-bottom: 1em;
         color: #3b82f6;
     }
+    .term-button {
+        display: inline;
+        color: #2563eb;
+        text-decoration: underline;
+        cursor: pointer;
+        background: none;
+        border: none;
+        padding: 0;
+        margin: 0;
+    }
+    
+    .term-explanation {
+        background-color: #f8fafc;
+        border-left: 4px solid #2563eb;
+        padding: 1rem;
+        margin: 0.5rem 0;
+        border-radius: 0 0.5rem 0.5rem 0;
+    }
+    
+    .stExpander {
+        border: 1px solid #e2e8f0;
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -210,11 +234,8 @@ def render_results(app_state):
         for section, content in result.items():
             with st.expander(section.replace("_", " ").capitalize(), expanded=True):
                 st.markdown(f'<div class="section-title">{section.replace("_", " ").capitalize()}</div>', unsafe_allow_html=True)
-                for line in content.split('\n'):
-                    if line.strip().startswith('**') and line.strip().endswith('**'):
-                        st.markdown(f'<div class="result-title">{line.strip()[2:-2]}</div>', unsafe_allow_html=True)
-                    else:
-                        st.write(line)
+                # Use the new format_text_with_definitions function
+                format_text_with_definitions(content)
         
         if st.button("Exporteer als Word-document", use_container_width=True):
             export_to_docx(result)
@@ -395,3 +416,40 @@ def render_person_details(app_state):
             app_state.set_step("choose_method")
         else:
             st.error("Vul alstublieft alle verplichte velden in voordat u doorgaat.")
+
+def format_text_with_definitions(text):
+    """Format text by highlighting defined terms and making them clickable."""
+    from definitions import MORTGAGE_DEFINITIONS
+    
+    # Don't process if text is None
+    if not text:
+        return text
+    
+    # Create columns for the layout
+    col1, col2 = st.columns([2, 1])
+    
+    # Initialize session state for selected term if it doesn't exist
+    if 'selected_term' not in st.session_state:
+        st.session_state.selected_term = None
+    
+    with col1:
+        # Process the text and add buttons for defined terms
+        for term in MORTGAGE_DEFINITIONS.keys():
+            if term.lower() in text.lower():
+                # Split text by the term (case-insensitive)
+                import re
+                parts = re.split(f'({term})', text, flags=re.IGNORECASE)
+                
+                # Rebuild text with buttons for the term
+                for part in parts:
+                    if part.lower() == term.lower():
+                        if st.button(part, key=f"term_{part}_{hash(text)}"):
+                            st.session_state.selected_term = term
+                    else:
+                        st.write(part, unsafe_allow_html=True)
+            
+    with col2:
+        # Show explanation if a term is selected
+        if st.session_state.selected_term:
+            with st.expander(st.session_state.selected_term, expanded=True):
+                st.markdown(MORTGAGE_DEFINITIONS[st.session_state.selected_term])
