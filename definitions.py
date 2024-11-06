@@ -64,3 +64,36 @@ Kenmerken:
 - Kan korter maar meestal niet langer
 """,
 }
+
+def improve_explanation(term, base_uitleg, originele_tekst, client):
+    prompt = f"""Je bent een ervaren financieel adviseur die een collega helpt om een hypotheekadvies te verbeteren.
+
+CONTEXT:
+- De originele tekst van je collega bevat alle essentiële adviesinformatie
+- Je moet deze informatie EXACT behouden
+- Je taak is ALLEEN om een heldere uitleg over '{term}' toe te voegen
+- Integreer de volgende basisuitleg op een natuurlijke manier:
+
+BASISUITLEG:
+{base_uitleg}
+
+ORIGINELE TEKST VAN COLLEGA:
+{originele_tekst}
+
+INSTRUCTIES:
+1. Behoud ALLE originele informatie en advies
+2. Voeg de uitleg over {term} op een logische plek toe
+3. Zorg voor vloeiende overgangen
+4. Gebruik professionele maar begrijpelijke taal
+
+Let op: Je mag het originele advies NIET wijzigen, alleen aanvullen met de uitleg."""
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",  # of "gpt-4o" voor uitgebreidere resultaten
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"Fout bij het genereren van de verbeterde tekst: {str(e)}"

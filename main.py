@@ -4,10 +4,20 @@ from audio_service import AudioService
 from transcription_service import TranscriptionService
 import ui_components as ui
 from app_state import AppState
+from openai import OpenAI
 
 st.set_page_config(page_title="AI Hypotheek Assistent", page_icon="🏠", layout="wide")
-
 ui.apply_custom_css()
+
+# Initialiseer OpenAI client als deze nog niet bestaat
+if 'openai_client' not in st.session_state:
+    st.session_state.openai_client = OpenAI(api_key=st.secrets["API"]["OPENAI_API_KEY"])
+
+# Initialiseer dictionary voor verbeterde teksten
+if 'enhanced_texts' not in st.session_state:
+    st.session_state.enhanced_texts = {}
+
+
 
 def initialize_services():
     api_key = st.secrets.API.get("OPENAI_API_KEY")

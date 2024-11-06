@@ -145,6 +145,26 @@ def apply_custom_css():
         padding-left: 1rem;
         margin-top: 1rem;
     }
+    .uitleg-kaart {
+        background-color: #ffffff;
+        border-radius: 10px;
+        padding: 1.5rem;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        margin-bottom: 1rem;
+    }
+    
+    .uitleg-kaart h3 {
+        color: #2563eb;
+        margin-bottom: 1rem;
+        font-size: 1.2rem;
+    }
+    
+    .uitleg-content {
+        font-size: 0.95rem;
+        line-height: 1.5;
+        color: #334155;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -438,53 +458,75 @@ def render_person_details(app_state):
         else:
             st.error("Vul alstublieft alle verplichte velden in voordat u doorgaat.")
 
-def format_text_with_definitions(text):
-    """Format text by highlighting defined terms and making them clickable."""
-    from definitions import MORTGAGE_DEFINITIONS
+def format_text_with_definitions(text, section_key):
+    """Tekst formatteren met uitleg van hypotheektermen."""
+    from definitions import MORTGAGE_DEFINITIONS, improve_explanation
     import re
     
     if not text:
         return text
     
+    # Maak kolommen voor layout
     col1, col2 = st.columns([2, 1])
     
+    # Initialiseer session state
     if 'selected_term' not in st.session_state:
         st.session_state.selected_term = None
+        st.session_state.selected_section = None
     
     with col1:
         current_text = text
         for term in MORTGAGE_DEFINITIONS.keys():
-            # Create pattern that matches whole words only
             pattern = r'\b' + re.escape(term) + r'\b'
-            
-            # Case insensitive search
             matches = list(re.finditer(pattern, current_text, re.IGNORECASE))
             
             if matches:
-                # Process text from end to start to maintain indices
                 for match in reversed(matches):
                     start, end = match.span()
-                    # Create unique key for each button
-                    button_key = f"term_{term}_{start}_{end}_{hash(text)}"
+                    button_key = f"term_{term}_{start}_{end}_{section_key}"
                     
-                    # Split and insert button
-                    if st.button(current_text[start:end], key=button_key, 
-                               help="Klik voor uitleg", 
-                               type="secondary", 
-                               use_container_width=False):
+                    if st.button(
+                        current_text[start:end], 
+                        key=button_key,
+                        help="Klik voor uitleg",
+                        type="secondary",
+                        use_container_width=False
+                    ):
                         st.session_state.selected_term = term
+                        st.session_state.selected_section = section_key
                     
-                    # Add the rest of the text
                     st.write(current_text[end:], unsafe_allow_html=True)
                     current_text = current_text[:start]
                 
-                # Write any remaining text
                 if current_text:
                     st.write(current_text, unsafe_allow_html=True)
     
     with col2:
-        if st.session_state.selected_term:
-            st.markdown("---")
-            st.markdown("### 📚 " + st.session_state.selected_term)
-            st.markdown(MORTGAGE_DEFINITIONS[st.session_state.selected_term])
-            st.markdown("---")
+        if (st.session_state.selected_term and 
+            st.session_state.selected_section == section_key):
+            
+            st.markdown("""
+            <div class="uitleg-kaart">
+                <h3>📚 {}</h3>
+                <div class="uitleg-content">
+                    {}
+                </div>
+            </div>
+            """.format(
+                st.session_state.selected_term,
+                MORTGAGE_DEFINITIONS[st.session_state.selected_term]
+            ), unsafe_allow_html=True)
+            
+            if st.button("➕ Voeg uitleg toe", 
+                        type="primary",
+                        use_container_width=True,
+                        key=f"add_{section_key}"):
+                
+                verbeterde_tekst = improve_explanation(
+                    st.session_state.selected_term,
+                    MORTGAGE_DEFINITIONS[st.session_state.selected_term],
+                    text,
+                    st.session_state.openai_client
+                )
+                st.session_state.enhanced_texts[section_key] = verbeterde_tekst
+                st.success("Uitleg is toegevoegd! Ververs de pagina om de wijzigingen te zien.")
