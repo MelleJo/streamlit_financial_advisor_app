@@ -37,7 +37,7 @@ class GPTService:
             # More specific system prompt
             system_prompt = """Je bent een ervaren hypotheekadviseur.
             Je MOET antwoorden in exact het gevraagde JSON format.
-            Als je de informatie niet kunt vinden, return je alsnog het format met standaard waarden."""
+            GEEN markdown codeblocks (geen ```json). ALLEEN pure JSON."""
             
             # More specific user prompt with example
             user_prompt = f"""
@@ -65,7 +65,7 @@ class GPTService:
                     ]
                 }}
             }}
-            ALLEEN DIT FORMAT. Geen extra tekst ervoor of erna."""
+            ALLEEN DIT FORMAT. Geen extra tekst ervoor of erna. Geen markdown code blocks."""
 
             prompt = ChatPromptTemplate.from_messages([
                 SystemMessage(content=system_prompt),
@@ -78,11 +78,15 @@ class GPTService:
             content = response.content.strip()
             logger.info(f"Initial analysis response: {content}")
             
+            # Clean up the response by removing markdown code blocks if present
+            content = content.replace("```json", "").replace("```", "").strip()
+            
             # Try to parse JSON, if fails return default
             try:
                 return json.loads(content)
-            except json.JSONDecodeError:
-                logger.error("Failed to parse JSON response")
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse JSON response: {e}")
+                logger.error(f"Response content: {content}")
                 return self._get_default_missing_info()
             
         except Exception as e:

@@ -140,11 +140,13 @@ def main():
         with st.expander("📝 Oorspronkelijk transcript"):
             st.write(app_state.transcript)
         
-        # Render question recorder for additional information
+        # Render question recorder with all required parameters
         render_question_recorder(
             transcription_service=services['transcription_service'],
+            checklist_service=services['checklist_service'],
             on_complete=handle_questions_complete,
-            on_skip=handle_questions_skip
+            on_skip=handle_questions_skip,
+            initial_transcript=app_state.transcript
         )
     
     elif app_state.step == "results":
