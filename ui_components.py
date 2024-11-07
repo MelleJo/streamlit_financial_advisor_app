@@ -49,7 +49,6 @@ def apply_custom_css():
         border: 1px solid rgba(226, 232, 240, 0.8);
         margin-bottom: 1rem;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-        animation: slideIn 0.3s ease-out;
     }
 
     .explanation-title {
@@ -73,7 +72,50 @@ def apply_custom_css():
         color: #1f2937;
         font-size: 1rem;
     }
+
+    .standard-explanations {
+        background: #f8fafc;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-top: 1rem;
+        border: 1px solid #e2e8f0;
+    }
+
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(255, 255, 255, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+    }
+
+    .loading-spinner {
+        width: 50px;
+        height: 50px;
+        border: 5px solid #f3f3f3;
+        border-top: 5px solid #3498db;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
     </style>
+    """, unsafe_allow_html=True)
+
+def render_loading_overlay():
+    st.markdown("""
+        <div class="loading-overlay">
+            <div class="loading-spinner"></div>
+            <div style="margin-left: 1rem;">Bezig met verwerken...</div>
+        </div>
     """, unsafe_allow_html=True)
 
 def render_results(app_state):
@@ -84,89 +126,82 @@ def render_results(app_state):
         st.warning("Er zijn geen resultaten beschikbaar.")
         return
     
-    # Initialize session state for term selection
+    # Initialize session state
     if 'selected_term' not in st.session_state:
         st.session_state.selected_term = None
     if 'selected_section' not in st.session_state:
         st.session_state.selected_section = None
-    if 'enhanced_texts' not in st.session_state:
-        st.session_state.enhanced_texts = {}
+    if 'is_loading' not in st.session_state:
+        st.session_state.is_loading = False
+
+    # Standard explanation options per section
+    standard_explanations = {
+        "adviesmotivatie_leningdeel": [
+            "Hypotheekvormen",
+            "Rentevaste periodes",
+            "NHG-voorwaarden",
+            "Maandlasten berekening"
+        ],
+        "adviesmotivatie_werkloosheid": [
+            "WW-uitkering",
+            "Woonlastenverzekering",
+            "Werkloosheidsrisico's",
+            "Financiële buffer"
+        ],
+        "adviesmotivatie_aow": [
+            "Pensioenopbouw",
+            "AOW-leeftijd",
+            "Hypotheek na pensionering",
+            "Vermogensplanning"
+        ]
+    }
+
+    # Show loading overlay if processing
+    if st.session_state.is_loading:
+        render_loading_overlay()
 
     # Process each section
     for section, content in app_state.result.items():
         with st.expander(section.replace("_", " ").capitalize(), expanded=True):
-            col1, col2 = st.columns([2, 1])
+            # Display the content
+            paragraphs = [p for p in content.split('\n') if p.strip()]
+            for para_idx, paragraph in enumerate(paragraphs):
+                st.markdown(f'<div class="text-paragraph">{paragraph}</div>', unsafe_allow_html=True)
             
-            with col1:
-                # Process text paragraph by paragraph
-                paragraphs = [p for p in content.split('\n') if p.strip()]
-                for para_idx, paragraph in enumerate(paragraphs):
-                    # Find all mortgage terms in the paragraph
-                    terms_in_paragraph = []
-                    for term in MORTGAGE_DEFINITIONS.keys():
-                        if re.search(r'\b' + re.escape(term) + r'\b', paragraph, re.IGNORECASE):
-                            terms_in_paragraph.append(term)
-                    
-                    # Display paragraph text
-                    st.markdown(f'<div class="text-paragraph">{paragraph}</div>', unsafe_allow_html=True)
-                    
-                    # Add clickable buttons for terms found in the paragraph
-                    if terms_in_paragraph:
-                        cols = st.columns(min(3, len(terms_in_paragraph)))
-                        for idx, term in enumerate(terms_in_paragraph):
-                            with cols[idx % 3]:
-                                # Make key unique by including section, paragraph index, and term index
-                                button_key = f"{section}_p{para_idx}_t{idx}_{term}"
-                                if st.button(f"📚 {term}", key=button_key):
-                                    st.session_state.selected_term = term
-                                    st.session_state.selected_section = section
-                                    st.rerun()
+            # Standard explanations section
+            st.markdown("""
+                <div class="standard-explanations">
+                    <h4>Voeg standaard uitleg toe:</h4>
+                </div>
+            """, unsafe_allow_html=True)
             
-            with col2:
-                # Show definition if term is selected for this section
-                if (st.session_state.selected_term and 
-                    st.session_state.selected_section == section):
-                    
-                    st.markdown(f"""
-                        <div class="explanation-card">
-                            <div class="explanation-title">
-                                📚 {st.session_state.selected_term}
-                            </div>
-                            <div class="explanation-content">
-                                {MORTGAGE_DEFINITIONS[st.session_state.selected_term].replace('\n', '<br>')}
-                            </div>
-                        </div>
-                    """, unsafe_allow_html=True)
-                    
+            # Create columns for explanation options
+            cols = st.columns(2)
+            for idx, explanation in enumerate(standard_explanations[section]):
+                with cols[idx % 2]:
                     if st.button(
-                        "➕ Voeg uitleg toe", 
-                        type="primary",
-                        use_container_width=True,
-                        key=f"add_{section}_{st.session_state.selected_term}"
+                        f"➕ {explanation}",
+                        key=f"{section}_exp_{idx}",
+                        use_container_width=True
                     ):
+                        st.session_state.is_loading = True
                         enhanced_text = improve_explanation(
-                            st.session_state.selected_term,
-                            MORTGAGE_DEFINITIONS[st.session_state.selected_term],
+                            explanation,
+                            f"Standaard uitleg over {explanation}",
                             content,
                             st.session_state.openai_client
                         )
-                        
                         if enhanced_text:
-                            st.session_state.enhanced_texts[section] = enhanced_text
-                            if section in app_state.result:
-                                app_state.result[section] = enhanced_text
-                                st.rerun()
+                            app_state.result[section] = enhanced_text
+                        st.session_state.is_loading = False
+                        st.rerun()
 
+    # Export and navigation buttons
     if st.button("Exporteer als Word-document", use_container_width=True):
         export_to_docx(app_state.result)
 
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Terug naar Start", use_container_width=True):
-            app_state.set_step("choose_method")
-    with col2:
-        if st.button("Nieuwe Analyse", use_container_width=True):
-            app_state.reset()
+    if st.button("Nieuwe Analyse", use_container_width=True):
+        app_state.reset()
 
 def export_to_docx(result):
     doc = Document()
