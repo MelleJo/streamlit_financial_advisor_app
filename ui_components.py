@@ -522,11 +522,17 @@ def format_text_with_definitions(text, section_key):
     if not text:
         return text
     
-    col1, col2 = st.columns([2, 1])
+    # Initialize session state variables
+    if 'enhanced_texts' not in st.session_state:
+        st.session_state.enhanced_texts = {}
     
     if 'selected_term' not in st.session_state:
         st.session_state.selected_term = None
+        
+    if 'selected_section' not in st.session_state:
         st.session_state.selected_section = None
+    
+    col1, col2 = st.columns([2, 1])
     
     with col1:
         # Process text paragraph by paragraph
