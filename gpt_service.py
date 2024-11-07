@@ -26,6 +26,13 @@ class GPTService:
             temperature=0.2,  # Reduced temperature for more consistent output
             openai_api_key=api_key
         )
+        # Load the prompt template during initialization
+        try:
+            with open('prompt_template.txt', 'r', encoding='utf-8') as file:
+                self.prompt_template = file.read()
+        except Exception as e:
+            logger.error(f"Error loading prompt template: {str(e)}")
+            self.prompt_template = ""
 
     def analyze_initial_transcript(self, transcript: str) -> Dict[str, Any]:
         """Analyzes the initial transcript to identify missing information."""
@@ -93,56 +100,28 @@ class GPTService:
             logger.error(f"Error in initial analysis: {str(e)}")
             return self._get_default_missing_info()
 
-    def analyze_transcript(
-        self,
-        transcript: str,
-        app_state: Optional['AppState'] = None
-    ) -> Dict[str, str]:
+    def analyze_transcript(self, transcript: str, app_state: Optional['AppState'] = None) -> Dict[str, str]:
         """Analyzes the transcript and additional information to generate advice."""
         try:
             if not transcript:
                 return self._get_default_sections()
 
+            if not self.prompt_template:
+                logger.error("Prompt template not loaded")
+                return self._get_default_sections()
+
             # Prepare additional info
-            additional_info = self._format_additional_info(app_state)
+            conversation_history = self._format_additional_info(app_state)
 
-            # Enhanced system prompt
-            system_prompt = """Je bent een ervaren hypotheekadviseur.
-            Je MOET je antwoord structureren met de gevraagde XML-tags.
-            Als informatie ontbreekt, vermeld je wat er mist en wat de volgende stappen zijn.
-            Gebruik ALTIJD de gevraagde tags, zelfs als er weinig informatie is."""
-
-            # Structured user prompt
-            user_prompt = f"""
-            Transcript: {transcript}
-            
-            Aanvullende informatie: {additional_info}
-            
-            Genereer een adviesrapport met EXACT deze structuur:
-
-            <adviesmotivatie_leningdeel>
-            1. Samenvatting leningdeel
-            2. Analyse ontbrekende informatie
-            3. Concrete aanbevelingen
-            </adviesmotivatie_leningdeel>
-
-            <adviesmotivatie_werkloosheid>
-            1. Samenvatting werkloosheidsrisico
-            2. Analyse ontbrekende informatie
-            3. Concrete aanbevelingen
-            </adviesmotivatie_werkloosheid>
-
-            <adviesmotivatie_aow>
-            1. Samenvatting pensioensituatie
-            2. Analyse ontbrekende informatie
-            3. Concrete aanbevelingen
-            </adviesmotivatie_aow>
-
-            GEBRUIK DEZE TAGS. GEEN ANDERE STRUCTUUR TOEGESTAAN."""
+            # Format the prompt template with the transcript and conversation history
+            formatted_prompt = self.prompt_template.format(
+                transcript=transcript,
+                conversation_history=conversation_history
+            )
 
             prompt = ChatPromptTemplate.from_messages([
-                SystemMessage(content=system_prompt),
-                HumanMessage(content=user_prompt)
+                SystemMessage(content="Je bent een ervaren hypotheekadviseur die gespecialiseerd is in het analyseren van klantgesprekken en het opstellen van uitgebreide adviesrapporten."),
+                HumanMessage(content=formatted_prompt)
             ])
 
             messages = prompt.format_messages()

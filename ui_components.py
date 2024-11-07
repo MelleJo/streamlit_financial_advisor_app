@@ -382,37 +382,105 @@ def process_transcript(transcript, gpt_service, app_state):
         st.error("Er is geen transcript om te analyseren. Voer een transcript in, upload een bestand, of neem audio op.")
 
 def render_results(app_state):
-    """Renders the analysis results using modern UI components."""
+    """Renders the analysis results with clickable terms and definitions."""
     st.title("Analyse Resultaten")
     
     if not app_state.result:
         st.warning("Er zijn geen resultaten beschikbaar.")
         return
+    
+    # Initialize session state variables
+    if 'selected_term' not in st.session_state:
+        st.session_state.selected_term = None
+    if 'selected_section' not in st.session_state:
+        st.session_state.selected_section = None
+    if 'enhanced_texts' not in st.session_state:
+        st.session_state.enhanced_texts = {}
 
     for section, content in app_state.result.items():
         with st.expander(section.replace("_", " ").capitalize(), expanded=True):
-            st.markdown(f"""
-                <div style="background-color: white; padding: 20px; border-radius: 10px; margin-bottom: 10px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <h3 style="margin: 0;">{section.replace("_", " ").capitalize()}</h3>
-                        <button 
-                            onclick="navigator.clipboard.writeText(document.getElementById('{section}-content').innerText)"
-                            style="background-color: #f0f2f6; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer;"
-                        >
-                            📋 Kopieer
-                        </button>
-                    </div>
-                    <div id="{section}-content" style="white-space: pre-wrap;">
-                        {content}
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
+            col1, col2 = st.columns([2, 1])
+            
+            with col1:
+                # Process text paragraph by paragraph
+                for paragraph in content.split('\n'):
+                    if not paragraph.strip():
+                        continue
+                    
+                    html_parts = []
+                    current_pos = 0
+                    
+                    # Find all mortgage terms in the paragraph
+                    term_positions = []
+                    for term in MORTGAGE_DEFINITIONS.keys():
+                        pattern = r'\b' + re.escape(term) + r'\b'
+                        for match in re.finditer(pattern, paragraph, re.IGNORECASE):
+                            term_positions.append((match.start(), match.end(), term))
+                    
+                    # Sort positions to handle overlapping terms
+                    term_positions.sort()
+                    
+                    # Build HTML with highlighted terms
+                    for start, end, term in term_positions:
+                        # Add text before the term
+                        if start > current_pos:
+                            html_parts.append(paragraph[current_pos:start])
+                        
+                        # Add highlighted term with click handler
+                        term_html = f"""<span 
+                            class="term-highlight" 
+                            onclick="Streamlit.setComponentValue('{term}')">{paragraph[start:end]}</span>"""
+                        html_parts.append(term_html)
+                        current_pos = end
+                    
+                    # Add remaining text
+                    if current_pos < len(paragraph):
+                        html_parts.append(paragraph[current_pos:])
+                    
+                    # Display the paragraph
+                    st.markdown(
+                        f'<div class="text-paragraph">{"".join(html_parts)}</div>',
+                        unsafe_allow_html=True
+                    )
+            
+            with col2:
+                # Show definition if term is selected
+                if (st.session_state.selected_term and 
+                    st.session_state.selected_section == section):
+                    
+                    st.markdown(f"""
+                        <div class="explanation-card">
+                            <div class="explanation-title">
+                                📚 {st.session_state.selected_term}
+                            </div>
+                            <div class="explanation-content">
+                                {MORTGAGE_DEFINITIONS[st.session_state.selected_term].replace('\n', '<br>')}
+                            </div>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                    if st.button(
+                        "➕ Voeg uitleg toe", 
+                        type="primary",
+                        use_container_width=True,
+                        key=f"add_{section}_{st.session_state.selected_term}"
+                    ):
+                        enhanced_text = improve_explanation(
+                            st.session_state.selected_term,
+                            MORTGAGE_DEFINITIONS[st.session_state.selected_term],
+                            content,
+                            st.session_state.openai_client
+                        )
+                        
+                        if enhanced_text:
+                            st.session_state.enhanced_texts[section] = enhanced_text
+                            if section in app_state.result:
+                                app_state.result[section] = enhanced_text
+                                st.rerun()
 
-    # Export button
     if st.button("Exporteer als Word-document", use_container_width=True):
         export_to_docx(app_state.result)
 
-    # Navigation buttons
     col1, col2 = st.columns(2)
     with col1:
         if st.button("Terug naar Start", use_container_width=True):
