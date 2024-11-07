@@ -12,115 +12,71 @@ class GPTService:
     def __init__(self, api_key: str):
         self.llm = ChatOpenAI(
             model="gpt-4o-2024-08-06",
-            temperature=0.3,
+            temperature=0.2,  # Reduced temperature for more consistent output
             openai_api_key=api_key
         )
-        
-        # Initial analysis prompt
-        self.initial_analysis_prompt = ChatPromptTemplate.from_messages([
-            SystemMessage(content="""Je bent een hypotheekadviseur die een initiële analyse uitvoert.
-            Identificeer ontbrekende informatie voor een volledig hypotheekadvies."""),
-            HumanMessage(content="""
-            Analyseer dit transcript en identificeer ontbrekende informatie:
-            {transcript}
-            
-            Retourneer de analyse in dit format:
-            {
-                "missing_info": {
-                    "leningdeel": ["ontbrekend item 1", "ontbrekend item 2"],
-                    "werkloosheid": ["ontbrekend item 1", "ontbrekend item 2"],
-                    "aow": ["ontbrekend item 1", "ontbrekend item 2"]
-                }
-            }
-            """)
-        ])
-        
-        # Full analysis prompt
-        self.analysis_prompt = ChatPromptTemplate.from_messages([
-            SystemMessage(content="""Je bent een hypotheekadviseur die adviesnotities analyseert. 
-            Focus op concrete details en cijfers in je analyse."""),
-            HumanMessage(content="""
-            Transcript van de adviesnotitie:
-            {transcript}
-
-            {additional_info}
-
-            Genereer een gestructureerd adviesrapport met de volgende secties:
-            
-            <adviesmotivatie_leningdeel>
-            - Gedetailleerde analyse van het leningdeel
-            - Inclusief bedragen, voorwaarden en motivatie
-            </adviesmotivatie_leningdeel>
-
-            <adviesmotivatie_werkloosheid>
-            - Analyse van werkloosheidsrisico's en maatregelen
-            - Inclusief verzekeringen en buffer
-            </adviesmotivatie_werkloosheid>
-
-            <adviesmotivatie_aow>
-            - Analyse van de pensioensituatie
-            - Inclusief AOW en aanvullende voorzieningen
-            </adviesmotivatie_aow>
-            """)
-        ])
-
-    def get_default_response(self, error_msg: str = "") -> Dict[str, str]:
-        """Returns a default response structure with optional error message."""
-        prefix = "Er is een fout opgetreden bij de analyse" if error_msg else "Er is onvoldoende informatie beschikbaar"
-        message = f"{prefix}: {error_msg}" if error_msg else prefix
-        
-        return {
-            "adviesmotivatie_leningdeel": message + "\n\nBenodigd voor leningdeel analyse:\n- Leningbedrag\n- NHG keuze\n- Rentevaste periode\n- Hypotheekvorm",
-            "adviesmotivatie_werkloosheid": message + "\n\nBenodigd voor werkloosheid analyse:\n- Huidige arbeidssituatie\n- Risico-inschatting\n- Gewenste dekking",
-            "adviesmotivatie_aow": message + "\n\nBenodigd voor AOW analyse:\n- Pensioenleeftijd\n- Pensioenwensen\n- Vermogensopbouw planning"
-        }
 
     def analyze_initial_transcript(self, transcript: str) -> Dict[str, Any]:
         """Analyzes the initial transcript to identify missing information."""
         try:
             if not transcript or len(transcript.strip()) == 0:
-                return {
-                    "missing_info": {
-                        "leningdeel": ["Geen transcript aangeleverd"],
-                        "werkloosheid": ["Geen transcript aangeleverd"],
-                        "aow": ["Geen transcript aangeleverd"]
-                    }
-                }
+                logger.warning("Empty transcript provided")
+                return self._get_default_missing_info()
 
-            messages = self.initial_analysis_prompt.format_messages(transcript=transcript)
+            # More specific system prompt
+            system_prompt = """Je bent een ervaren hypotheekadviseur.
+            Je MOET antwoorden in exact het gevraagde JSON format.
+            Als je de informatie niet kunt vinden, return je alsnog het format met standaard waarden."""
+            
+            # More specific user prompt with example
+            user_prompt = f"""
+            Analyseer dit transcript:
+            {transcript}
+            
+            Je MOET je antwoord geven in exact dit JSON formaat:
+            {{
+                "missing_info": {{
+                    "leningdeel": [
+                        "leningbedrag",
+                        "NHG keuze",
+                        "rentevaste periode",
+                        "hypotheekvorm"
+                    ],
+                    "werkloosheid": [
+                        "huidige arbeidssituatie",
+                        "werkloosheidsrisico",
+                        "gewenste dekking"
+                    ],
+                    "aow": [
+                        "pensioenleeftijd",
+                        "pensioenwensen",
+                        "vermogensopbouw"
+                    ]
+                }}
+            }}
+            ALLEEN DIT FORMAT. Geen extra tekst ervoor of erna."""
+
+            prompt = ChatPromptTemplate.from_messages([
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=user_prompt)
+            ])
+
+            messages = prompt.format_messages()
             response = self.llm.invoke(messages)
             
             content = response.content.strip()
             logger.info(f"Initial analysis response: {content}")
             
-            # Parse JSON response
+            # Try to parse JSON, if fails return default
             try:
-                if "```json" in content:
-                    content = content.split("```json")[1].split("```")[0].strip()
-                elif "```" in content:
-                    content = content.split("```")[1].strip()
-                
-                result = json.loads(content)
-                return result
-
+                return json.loads(content)
             except json.JSONDecodeError:
-                return {
-                    "missing_info": {
-                        "leningdeel": ["Error parsing analysis"],
-                        "werkloosheid": ["Error parsing analysis"],
-                        "aow": ["Error parsing analysis"]
-                    }
-                }
+                logger.error("Failed to parse JSON response")
+                return self._get_default_missing_info()
             
         except Exception as e:
-            logger.error(f"Error in initial transcript analysis: {str(e)}")
-            return {
-                "missing_info": {
-                    "leningdeel": ["Error analyzing leningdeel"],
-                    "werkloosheid": ["Error analyzing werkloosheid"],
-                    "aow": ["Error analyzing aow"]
-                }
-            }
+            logger.error(f"Error in initial analysis: {str(e)}")
+            return self._get_default_missing_info()
 
     def analyze_transcript(
         self,
@@ -129,71 +85,192 @@ class GPTService:
     ) -> Dict[str, str]:
         """Analyzes the transcript and additional information to generate advice."""
         try:
-            if not transcript or len(transcript.strip()) == 0:
-                return self.get_default_response("Geen transcript aangeleverd")
+            if not transcript:
+                return self._get_default_sections()
 
-            # Format additional info if available
-            additional_info = "Geen aanvullende informatie beschikbaar."
-            if app_state and hasattr(app_state, 'additional_info') and app_state.additional_info:
-                try:
-                    info_parts = []
-                    for qa_dict in app_state.additional_info.values():
-                        if isinstance(qa_dict, dict):
-                            q = qa_dict.get('question', '')
-                            a = qa_dict.get('answer', '')
-                            if q and a:
-                                info_parts.append(f"Vraag: {q}\nAntwoord: {a}")
-                    if info_parts:
-                        additional_info = "Aanvullende informatie:\n\n" + "\n\n".join(info_parts)
-                except Exception as e:
-                    logger.error(f"Error formatting additional info: {str(e)}")
+            # Prepare additional info
+            additional_info = self._format_additional_info(app_state)
 
-            # Get response from LLM
-            messages = self.analysis_prompt.format_messages(
-                transcript=transcript,
-                additional_info=additional_info
-            )
+            # Enhanced system prompt
+            system_prompt = """Je bent een ervaren hypotheekadviseur.
+            Je MOET je antwoord structureren met de gevraagde XML-tags.
+            Als informatie ontbreekt, vermeld je wat er mist en wat de volgende stappen zijn.
+            Gebruik ALTIJD de gevraagde tags, zelfs als er weinig informatie is."""
+
+            # Structured user prompt
+            user_prompt = f"""
+            Transcript: {transcript}
+            
+            Aanvullende informatie: {additional_info}
+            
+            Genereer een adviesrapport met EXACT deze structuur:
+
+            <adviesmotivatie_leningdeel>
+            1. Samenvatting leningdeel
+            2. Analyse ontbrekende informatie
+            3. Concrete aanbevelingen
+            </adviesmotivatie_leningdeel>
+
+            <adviesmotivatie_werkloosheid>
+            1. Samenvatting werkloosheidsrisico
+            2. Analyse ontbrekende informatie
+            3. Concrete aanbevelingen
+            </adviesmotivatie_werkloosheid>
+
+            <adviesmotivatie_aow>
+            1. Samenvatting pensioensituatie
+            2. Analyse ontbrekende informatie
+            3. Concrete aanbevelingen
+            </adviesmotivatie_aow>
+
+            GEBRUIK DEZE TAGS. GEEN ANDERE STRUCTUUR TOEGESTAAN."""
+
+            prompt = ChatPromptTemplate.from_messages([
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=user_prompt)
+            ])
+
+            messages = prompt.format_messages()
             response = self.llm.invoke(messages)
             
-            content = response.content
-            logger.info(f"Raw LLM response: {content}")
+            content = response.content.strip()
+            logger.info(f"Analysis response: {content}")
             
-            # Parse sections
-            sections = {
-                "adviesmotivatie_leningdeel": [],
-                "adviesmotivatie_werkloosheid": [],
-                "adviesmotivatie_aow": []
-            }
+            # Check if response contains required tags
+            if not all(tag in content for tag in ['<adviesmotivatie_leningdeel>', '<adviesmotivatie_werkloosheid>', '<adviesmotivatie_aow>']):
+                logger.error("Response missing required tags")
+                return self._get_default_sections()
+
+            return self._parse_sections(content)
             
+        except Exception as e:
+            logger.error(f"Error in transcript analysis: {str(e)}")
+            return self._get_default_sections()
+
+    def _format_additional_info(self, app_state: Optional['AppState']) -> str:
+        """Safely formats additional information from app state."""
+        try:
+            if not app_state or not hasattr(app_state, 'additional_info') or not app_state.additional_info:
+                return "Geen aanvullende informatie beschikbaar."
+
+            info_parts = []
+            for key, value in app_state.additional_info.items():
+                if isinstance(value, dict):
+                    question = value.get('question', '')
+                    answer = value.get('answer', '')
+                    if question and answer:
+                        info_parts.append(f"Vraag: {question}\nAntwoord: {answer}")
+            
+            return "\n\n".join(info_parts) if info_parts else "Geen aanvullende informatie beschikbaar."
+            
+        except Exception as e:
+            logger.error(f"Error formatting additional info: {str(e)}")
+            return "Error bij verwerken aanvullende informatie."
+
+    def _parse_sections(self, content: str) -> Dict[str, str]:
+        """Parses content into sections with error handling."""
+        sections = {
+            "adviesmotivatie_leningdeel": "",
+            "adviesmotivatie_werkloosheid": "",
+            "adviesmotivatie_aow": ""
+        }
+        
+        try:
             current_section = None
+            current_content = []
+            
             for line in content.split('\n'):
                 line = line.strip()
                 if not line:
                     continue
-                    
-                if line.startswith('<adviesmotivatie_'):
-                    tag = line.strip('<>')
-                    if tag in sections:
-                        current_section = tag
-                elif line.startswith('</adviesmotivatie_'):
-                    current_section = None
-                elif current_section and current_section in sections:
-                    sections[current_section].append(line)
-            
-            # Convert to final format
-            result = {}
-            for section, lines in sections.items():
-                if lines:
-                    result[section] = '\n'.join(lines)
-                else:
-                    result[section] = f"Geen informatie beschikbaar voor {section}"
-            
-            # Verify all sections are present
-            if len(result) != 3:
-                return self.get_default_response("Incomplete analyse")
                 
-            return result
+                if line.startswith('<adviesmotivatie_'):
+                    current_section = line[1:-1]
+                    current_content = []
+                elif line.startswith('</adviesmotivatie_'):
+                    if current_section in sections:
+                        sections[current_section] = '\n'.join(current_content)
+                    current_section = None
+                elif current_section:
+                    current_content.append(line)
+
+            # Validate sections
+            for section, content in sections.items():
+                if not content.strip():
+                    sections[section] = self._get_default_section_content(section)
+                    
+            return sections
             
         except Exception as e:
-            logger.error(f"Error analyzing transcript: {str(e)}")
-            return self.get_default_response(str(e))
+            logger.error(f"Error parsing sections: {str(e)}")
+            return self._get_default_sections()
+
+    def _get_default_missing_info(self) -> Dict[str, Any]:
+        """Returns default missing information structure."""
+        return {
+            "missing_info": {
+                "leningdeel": ["leningbedrag", "NHG keuze", "rentevaste periode", "hypotheekvorm"],
+                "werkloosheid": ["huidige arbeidssituatie", "werkloosheidsrisico", "gewenste dekking"],
+                "aow": ["pensioenleeftijd", "pensioenwensen", "vermogensopbouw"]
+            }
+        }
+
+    def _get_default_sections(self) -> Dict[str, str]:
+        """Returns default sections with explanatory content."""
+        return {
+            "adviesmotivatie_leningdeel": self._get_default_section_content("adviesmotivatie_leningdeel"),
+            "adviesmotivatie_werkloosheid": self._get_default_section_content("adviesmotivatie_werkloosheid"),
+            "adviesmotivatie_aow": self._get_default_section_content("adviesmotivatie_aow")
+        }
+
+    def _get_default_section_content(self, section: str) -> str:
+        """Returns default content for a specific section."""
+        defaults = {
+            "adviesmotivatie_leningdeel": """
+1. Samenvatting leningdeel
+- Onvoldoende informatie voor volledig advies
+- Basisgegevens ontbreken
+
+2. Ontbrekende informatie
+- Gewenst leningbedrag
+- NHG voorkeuren
+- Rentevaste periode wensen
+- Gewenste hypotheekvorm
+
+3. Aanbevelingen
+- Plan een vervolggesprek
+- Verzamel basisgegevens
+- Bepaal klantvoorkeuren
+""",
+            "adviesmotivatie_werkloosheid": """
+1. Samenvatting werkloosheidsrisico
+- Onvoldoende informatie voor risico-inschatting
+- Werkloosheidsdekking niet bepaald
+
+2. Ontbrekende informatie
+- Huidige arbeidssituatie
+- Werkloosheidsrisico inschatting
+- Gewenste dekking
+
+3. Aanbevelingen
+- Analyseer arbeidssituatie
+- Bespreek risicotolerantie
+- Onderzoek verzekeringsopties
+""",
+            "adviesmotivatie_aow": """
+1. Samenvatting pensioensituatie
+- Onvoldoende informatie voor pensioenadvies
+- Toekomstplanning onduidelijk
+
+2. Ontbrekende informatie
+- AOW-leeftijd
+- Pensioenwensen
+- Vermogensopbouw plan
+
+3. Aanbevelingen
+- Breng pensioenopbouw in kaart
+- Bepaal gewenste pensioensituatie
+- Plan vermogensopbouw strategie
+"""
+        }
+        return defaults.get(section, "Geen informatie beschikbaar voor deze sectie.")
