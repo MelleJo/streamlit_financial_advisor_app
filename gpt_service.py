@@ -16,7 +16,26 @@ class GPTService:
             openai_api_key=api_key
         )
         
-        # Conversation history prompt
+        # Initial analysis prompt
+        self.initial_analysis_prompt = ChatPromptTemplate.from_messages([
+            SystemMessage(content="""Je bent een hypotheekadviseur die een initiële analyse uitvoert.
+            Identificeer ontbrekende informatie voor een volledig hypotheekadvies."""),
+            HumanMessage(content="""
+            Analyseer dit transcript en identificeer ontbrekende informatie:
+            {transcript}
+            
+            Retourneer de analyse in dit format:
+            {
+                "missing_info": {
+                    "leningdeel": ["ontbrekend item 1", "ontbrekend item 2"],
+                    "werkloosheid": ["ontbrekend item 1", "ontbrekend item 2"],
+                    "aow": ["ontbrekend item 1", "ontbrekend item 2"]
+                }
+            }
+            """)
+        ])
+        
+        # Full analysis prompt
         self.analysis_prompt = ChatPromptTemplate.from_messages([
             SystemMessage(content="""Je bent een hypotheekadviseur die adviesnotities analyseert. 
             Analyseer de notitie met betrekking tot de leningdeel, werkloosheid, en AOW aspecten."""),
@@ -46,6 +65,44 @@ class GPTService:
             """)
         ])
 
+    def analyze_initial_transcript(self, transcript: str) -> Dict[str, Any]:
+        """Analyzes the initial transcript to identify missing information."""
+        try:
+            messages = self.initial_analysis_prompt.format_messages(transcript=transcript)
+            response = self.llm.invoke(messages)
+            
+            content = response.content
+            logger.info(f"Initial analysis response: {content}")
+            
+            # Parse JSON response
+            try:
+                # Clean the response if it contains markdown code blocks
+                if "```json" in content:
+                    content = content.split("```json")[1].split("```")[0]
+                elif "```" in content:
+                    content = content.split("```")[1]
+                
+                return json.loads(content)
+            except json.JSONDecodeError:
+                logger.error("Failed to parse JSON response")
+                return {
+                    "missing_info": {
+                        "leningdeel": ["Kon leningdeel informatie niet analyseren"],
+                        "werkloosheid": ["Kon werkloosheid informatie niet analyseren"],
+                        "aow": ["Kon AOW informatie niet analyseren"]
+                    }
+                }
+            
+        except Exception as e:
+            logger.error(f"Error in initial transcript analysis: {str(e)}")
+            return {
+                "missing_info": {
+                    "leningdeel": ["Error analyzing leningdeel information"],
+                    "werkloosheid": ["Error analyzing werkloosheid information"],
+                    "aow": ["Error analyzing AOW information"]
+                }
+            }
+
     def analyze_transcript(
         self,
         transcript: str,
@@ -71,7 +128,7 @@ class GPTService:
             content = response.content
             logger.info(f"Raw LLM response: {content}")
             
-            # Parse sections
+            # Parse sections using dictionary comprehension
             sections = {
                 "adviesmotivatie_leningdeel": "",
                 "adviesmotivatie_werkloosheid": "",
