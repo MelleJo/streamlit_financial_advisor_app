@@ -12,8 +12,12 @@ import json
 from typing import Dict, Any
 from app_state import AppState
 
-def render_chat_message(message: str, is_ai: bool):
-    """Render a single chat message with custom styling"""
+def render_chat_message(message: Dict[str, Any]):
+    """Render a single chat message with custom styling and context"""
+    is_ai = message.get("is_ai", False)
+    content = message.get("content", "")
+    context = message.get("context", "")
+    
     if is_ai:
         st.markdown(f"""
             <div style="
@@ -25,7 +29,8 @@ def render_chat_message(message: str, is_ai: bool):
                 margin-right: 20%;
             ">
                 <p style="margin: 0; color: #1a73e8;">🤖 AI Adviseur</p>
-                <p style="margin: 5px 0 0 0; color: #333;">{message}</p>
+                {f'<p style="margin: 5px 0; color: #666; font-size: 0.9em; font-style: italic;">{context}</p>' if context else ''}
+                <p style="margin: 5px 0 0 0; color: #333;">{content}</p>
             </div>
         """, unsafe_allow_html=True)
     else:
@@ -39,9 +44,39 @@ def render_chat_message(message: str, is_ai: bool):
                 margin-left: 20%;
             ">
                 <p style="margin: 0; color: #666;">👤 U</p>
-                <p style="margin: 5px 0 0 0; color: #333;">{message}</p>
+                <p style="margin: 5px 0 0 0; color: #333;">{content}</p>
             </div>
         """, unsafe_allow_html=True)
+
+def render_progress_indicator(app_state: 'AppState'):
+    """Render progress indicator showing completed and remaining topics"""
+    if app_state.remaining_topics:
+        st.markdown("### 📊 Voortgang")
+        
+        total_topics = sum(len(topics) for topics in app_state.missing_info.values())
+        remaining_topics = sum(len(topics) for topics in app_state.remaining_topics.values())
+        completed_topics = total_topics - remaining_topics
+        
+        progress = completed_topics / total_topics if total_topics > 0 else 0
+        st.progress(progress)
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown(f"**Behandeld:** {completed_topics}/{total_topics}")
+        with col2:
+            st.markdown(f"**Nog te bespreken:** {remaining_topics}")
+        
+        # Show remaining topics by category
+        with st.expander("📋 Nog te bespreken onderwerpen", expanded=False):
+            for category, topics in app_state.remaining_topics.items():
+                category_titles = {
+                    'leningdeel': '💰 Leningdeel',
+                    'werkloosheid': '🏢 Werkloosheid',
+                    'aow': '👴 AOW & Pensioen'
+                }
+                st.markdown(f"**{category_titles.get(category, category)}**")
+                for topic in topics:
+                    st.markdown(f"- {topic}")
 
 def render_conversation_ui(app_state: 'AppState', conversation_service: Any):
     """Render the conversation interface"""
@@ -68,15 +103,29 @@ def render_conversation_ui(app_state: 'AppState', conversation_service: Any):
             border-color: #1a73e8;
             box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
         }
+        .topic-progress {
+            padding: 10px;
+            background-color: #F8F9FA;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
         </style>
     """, unsafe_allow_html=True)
+
+    # Show progress indicator
+    render_progress_indicator(app_state)
+
+    # Original transcript expander
+    if app_state.transcript:
+        with st.expander("📝 Oorspronkelijk transcript", expanded=False):
+            st.markdown(f"```{app_state.transcript}```")
 
     # Chat history container
     st.markdown('<div class="chat-container">', unsafe_allow_html=True)
     
-    # Render conversation history
+    # Render conversation history with context
     for message in app_state.conversation_history:
-        render_chat_message(message["content"], message["is_ai"])
+        render_chat_message(message)
     
     # User input area
     col1, col2 = st.columns([6,1])
@@ -108,20 +157,33 @@ def render_conversation_ui(app_state: 'AppState', conversation_service: Any):
             response = conversation_service.process_user_response(
                 conversation_history,
                 user_input,
-                app_state.missing_info
+                app_state.remaining_topics
             )
         
         if response:
             # Add AI response to history
             if response.get("next_question"):
                 context = response.get("context", "")
-                message = f"{response['next_question']}\n\n{context if context else ''}"
-                app_state.add_message(message, is_ai=True)
+                app_state.add_message(
+                    response["next_question"],
+                    is_ai=True,
+                    context=context
+                )
             
-            # Update missing info
+            # Update remaining topics
             remaining_missing_info = response.get("remaining_missing_info")
             if remaining_missing_info is not None:
-                app_state.set_missing_info(remaining_missing_info)
+                app_state.remaining_topics = remaining_missing_info
+            
+            # Add Q&A pair to structured history
+            if response.get("processed_info"):
+                category = next(iter(response["processed_info"]))  # Get the category that was just discussed
+                app_state.add_qa_pair(
+                    response["next_question"],
+                    user_input,
+                    response.get("context", ""),
+                    category
+                )
             
             # Check if all information is collected
             if not remaining_missing_info:
@@ -138,4 +200,5 @@ def render_conversation_ui(app_state: 'AppState', conversation_service: Any):
 
     # Debug information in expander (optional)
     with st.expander("Debug Informatie", expanded=False):
-        st.json(app_state.missing_info)
+        st.write("Remaining Topics:", app_state.remaining_topics)
+        st.write("Structured Q&A History:", app_state.structured_qa_history)

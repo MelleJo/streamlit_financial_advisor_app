@@ -81,6 +81,39 @@ def apply_custom_css():
         border: 1px solid #e2e8f0;
     }
 
+    .qa-history {
+        background: #f8fafc;
+        padding: 1rem;
+        border-radius: 8px;
+        margin: 1rem 0;
+        border: 1px solid #e2e8f0;
+    }
+
+    .qa-pair {
+        background: white;
+        padding: 1rem;
+        border-radius: 6px;
+        margin: 0.5rem 0;
+        border: 1px solid #e5e7eb;
+    }
+
+    .qa-context {
+        color: #6b7280;
+        font-size: 0.9em;
+        font-style: italic;
+        margin-bottom: 0.5rem;
+    }
+
+    .qa-question {
+        color: #1a73e8;
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+    }
+
+    .qa-answer {
+        color: #374151;
+    }
+
     .loading-overlay {
         position: fixed;
         top: 0;
@@ -118,6 +151,31 @@ def render_loading_overlay():
         </div>
     """, unsafe_allow_html=True)
 
+def render_qa_history(qa_history, section):
+    """Renders the Q&A history for a specific section."""
+    if not qa_history:
+        return
+    
+    relevant_qa = [qa for qa in qa_history if qa.get('category') == section]
+    if not relevant_qa:
+        return
+    
+    st.markdown("""
+        <div class="qa-history">
+            <h4>Aanvullende informatie uit het gesprek:</h4>
+    """, unsafe_allow_html=True)
+    
+    for qa in relevant_qa:
+        st.markdown(f"""
+            <div class="qa-pair">
+                <div class="qa-context">{qa.get('context', '')}</div>
+                <div class="qa-question">Vraag: {qa.get('question', '')}</div>
+                <div class="qa-answer">Antwoord: {qa.get('answer', '')}</div>
+            </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("</div>", unsafe_allow_html=True)
+
 def render_results(app_state):
     """Renders the analysis results with clickable terms and definitions."""
     st.title("Analyse Resultaten")
@@ -133,6 +191,10 @@ def render_results(app_state):
         st.session_state.selected_section = None
     if 'is_loading' not in st.session_state:
         st.session_state.is_loading = False
+
+    # Show original transcript in expander
+    with st.expander("📝 Oorspronkelijk transcript", expanded=False):
+        st.markdown(f"```{app_state.transcript}```")
 
     # Standard explanation options per section
     standard_explanations = {
@@ -168,6 +230,9 @@ def render_results(app_state):
             for para_idx, paragraph in enumerate(paragraphs):
                 st.markdown(f'<div class="text-paragraph">{paragraph}</div>', unsafe_allow_html=True)
             
+            # Display Q&A history relevant to this section
+            render_qa_history(app_state.structured_qa_history, section.replace("adviesmotivatie_", ""))
+            
             # Standard explanations section
             st.markdown("""
                 <div class="standard-explanations">
@@ -196,24 +261,53 @@ def render_results(app_state):
                         st.session_state.is_loading = False
                         st.rerun()
 
-    # Export and navigation buttons
+    # Export options
+    st.markdown("### 📑 Exporteer Resultaten")
+    
     if st.button("Exporteer als Word-document", use_container_width=True):
-        export_to_docx(app_state.result)
+        export_to_docx(app_state)
 
     if st.button("Nieuwe Analyse", use_container_width=True):
         app_state.reset()
+        st.rerun()
 
-def export_to_docx(result):
+def export_to_docx(app_state):
+    """Exports the analysis results including Q&A history to a Word document."""
     doc = Document()
     doc.add_heading('Analyse Resultaten', 0)
 
-    for section, content in result.items():
+    # Add original transcript
+    doc.add_heading('Oorspronkelijk Transcript', level=1)
+    doc.add_paragraph(app_state.transcript)
+
+    # Add analysis results with Q&A history
+    for section, content in app_state.result.items():
         doc.add_heading(section.replace("_", " ").capitalize(), level=1)
+        
+        # Add main content
         for line in content.split('\n'):
             if line.strip().startswith('**') and line.strip().endswith('**'):
                 doc.add_paragraph(line.strip()[2:-2], style='Heading 2')
             else:
                 doc.add_paragraph(line)
+        
+        # Add Q&A history for this section
+        section_qa = [qa for qa in app_state.structured_qa_history 
+                     if qa.get('category') == section.replace("adviesmotivatie_", "")]
+        
+        if section_qa:
+            doc.add_heading('Aanvullende Informatie uit het Gesprek', level=2)
+            for qa in section_qa:
+                p = doc.add_paragraph()
+                p.add_run('Context: ').bold()
+                p.add_run(qa.get('context', ''))
+                p = doc.add_paragraph()
+                p.add_run('Vraag: ').bold()
+                p.add_run(qa.get('question', ''))
+                p = doc.add_paragraph()
+                p.add_run('Antwoord: ').bold()
+                p.add_run(qa.get('answer', ''))
+                doc.add_paragraph()  # Add spacing
 
     bio = BytesIO()
     doc.save(bio)

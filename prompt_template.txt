@@ -7,6 +7,7 @@ BELANGRIJKE INSTRUCTIE:
 - Maak GEEN nieuwe berekeningen of conclusies die niet in de gesprekken zijn besproken
 - Gebruik de beschikbare kennisbank voor het formuleren van uitleg over arbeidsongeschiktheid, werkloosheid, AOW en overlijdensrisico
 - Pas de toon en diepgang van de uitleg aan op basis van de context van het gesprek
+- Verwerk de informatie uit de aanvullende vragen en antwoorden in de juiste secties
 
 BESCHIKBARE INFORMATIEBRONNEN:
 
@@ -18,6 +19,12 @@ BESCHIKBARE INFORMATIEBRONNEN:
 2. Aanvullende gesprekshistorie (indien beschikbaar):
 {conversation_history}
 
+3. Checklist van verplichte onderdelen:
+{checklist}
+
+4. Nog ontbrekende informatie:
+{missing_info}
+
 VEREISTE ADVIESMODULES:
 
 1. Adviesmotivatie Leningdeel:
@@ -26,6 +33,7 @@ VEREISTE ADVIESMODULES:
   * Hypotheekvorm voorkeuren
   * Besproken renteopties
   * Overige specifiek genoemde voorkeuren
+- Verwerk relevante aanvullende antwoorden uit de gesprekshistorie
 
 2. Adviesmotivatie Werkloosheid:
 - Focus alleen op besproken aspecten zoals:
@@ -38,6 +46,7 @@ VEREISTE ADVIESMODULES:
   * Impact van werkloosheid op hypotheek
   * Opties voor werkloosheidsdekking
   * Voor- en nadelen van verzekeringen
+- Verwerk relevante aanvullende antwoorden uit de gesprekshistorie
 
 3. Adviesmotivatie AOW:
 - Behandel alleen genoemde onderwerpen over:
@@ -49,6 +58,7 @@ VEREISTE ADVIESMODULES:
   * Arbeidsongeschiktheidsrisico's
   * Woonlastenverzekering opties
   * Impact op hypotheeklasten
+- Verwerk relevante aanvullende antwoorden uit de gesprekshistorie
 
 4. Adviesmotivatie Overlijdensrisico:
 - Behandel alleen besproken aspecten zoals:
@@ -62,30 +72,78 @@ VEREISTE ADVIESMODULES:
   * Nabestaandenpensioen mogelijkheden
   * ANW-hiaat overwegingen
   * Impact op nabestaanden
+- Verwerk relevante aanvullende antwoorden uit de gesprekshistorie
 
 OUTPUTFORMAAT:
 
 <adviesmotivatie_leningdeel>
-Herstructureer alleen de besproken leningdeel-informatie in een duidelijk format.
+1. Samenvatting Leningdeel
+- Besproken details uit oorspronkelijk gesprek
+- Aanvullende informatie uit vervolgvragen
+- Duidelijke onderbouwing van keuzes
+
+2. Specifieke Wensen en Voorkeuren
+- Leningbedrag en motivatie
+- Hypotheekvorm keuze
+- Rentevoorkeuren
+- Overige belangrijke aspecten
+
+3. Conclusies en Aandachtspunten
+- Belangrijkste conclusies
+- Eventuele aandachtspunten
+- Nog te bespreken onderwerpen (indien van toepassing)
 </adviesmotivatie_leningdeel>
 
 <adviesmotivatie_werkloosheid>
-Herstructureer alleen de besproken werkloosheid-informatie in een duidelijk format.
-Gebruik de kennisbank voor professionele formulering.
+1. Huidige Situatie
+- Werksituatie en risico-inschatting
+- Besproken zorgen en wensen
+- Aanvullende informatie uit vervolgvragen
+
+2. Risicoanalyse
+- Impact werkloosheid op hypotheek
+- Gewenste bescherming
+- Specifieke overwegingen
+
+3. Advies en Aandachtspunten
+- Concrete adviezen
+- Belangrijke overwegingen
+- Nog te bespreken onderwerpen (indien van toepassing)
 </adviesmotivatie_werkloosheid>
 
 <adviesmotivatie_aow>
-Herstructureer alleen de besproken AOW-informatie in een duidelijk format.
-Gebruik de kennisbank voor professionele formulering.
+1. Pensioensituatie
+- Huidige pensioenopbouw
+- Besproken wensen
+- Aanvullende informatie uit vervolgvragen
+
+2. Toekomstplanning
+- AOW en pensioenleeftijd
+- Gewenste situatie
+- Vermogensplanning
+
+3. Advies en Aandachtspunten
+- Concrete adviezen
+- Belangrijke overwegingen
+- Nog te bespreken onderwerpen (indien van toepassing)
 </adviesmotivatie_aow>
 
 <adviesmotivatie_overlijdensrisico>
-Herstructureer alleen de besproken overlijdensrisico-informatie in een duidelijk format.
-Gebruik de kennisbank voor professionele formulering van:
+1. Gewenste Dekking
+- Besproken dekkingswensen
+- Specifieke voorkeuren
+- Aanvullende informatie uit vervolgvragen
+
+2. Verzekeringskeuze
 - Type verzekering en motivatie
 - Verzekerd bedrag en looptijd
 - Nabestaandenvoorzieningen
+
+3. Advies en Aandachtspunten
+- Concrete adviezen
+- Belangrijke overwegingen
+- Nog te bespreken onderwerpen (indien van toepassing)
 </adviesmotivatie_overlijdensrisico>
 
 ONTBREKENDE INFORMATIE:
-Als bepaalde aspecten niet zijn besproken, geef dit dan duidelijk aan met "Hierover is geen informatie besproken in het gesprek." Voeg GEEN aannames of suggesties toe voor ontbrekende informatie.
+Als bepaalde aspecten niet zijn besproken, geef dit dan duidelijk aan met "Hierover is geen informatie besproken in het gesprek." Voeg GEEN aannames of suggesties toe voor ontbrekende informatie. Gebruik de checklist en missing_info om te controleren welke onderwerpen nog niet zijn behandeld.

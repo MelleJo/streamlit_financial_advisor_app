@@ -15,6 +15,8 @@ from langchain_core.messages import HumanMessage, SystemMessage
 import json
 from typing import Dict, Any, Optional
 from app_state import AppState
+from conversation_service import ConversationService
+from checklist_analysis_service import ChecklistAnalysisService, CHECKLIST
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -26,6 +28,9 @@ class GPTService:
             temperature=0.2,  # Reduced temperature for more consistent output
             openai_api_key=api_key
         )
+        self.conversation_service = ConversationService(api_key)
+        self.checklist_service = ChecklistAnalysisService(api_key)
+        
         # Load the prompt template during initialization
         try:
             with open('prompt_template.txt', 'r', encoding='utf-8') as file:
@@ -41,60 +46,22 @@ class GPTService:
                 logger.warning("Empty transcript provided")
                 return self._get_default_missing_info()
 
-            # More specific system prompt
-            system_prompt = """Je bent een ervaren hypotheekadviseur.
-            Je MOET antwoorden in exact het gevraagde JSON format.
-            GEEN markdown codeblocks (geen ```json). ALLEEN pure JSON."""
+            # Use checklist service for initial analysis
+            checklist_analysis = self.checklist_service.analyze_transcript(transcript)
             
-            # More specific user prompt with example
-            user_prompt = f"""
-            Analyseer dit transcript:
-            {transcript}
+            # Use conversation service to generate appropriate questions
+            conversation_analysis = self.conversation_service.analyze_initial_transcript(transcript)
             
-            Je MOET je antwoord geven in exact dit JSON formaat:
-            {{
-                "missing_info": {{
-                    "leningdeel": [
-                        "leningbedrag",
-                        "NHG keuze",
-                        "rentevaste periode",
-                        "hypotheekvorm"
-                    ],
-                    "werkloosheid": [
-                        "huidige arbeidssituatie",
-                        "werkloosheidsrisico",
-                        "gewenste dekking"
-                    ],
-                    "aow": [
-                        "pensioenleeftijd",
-                        "pensioenwensen",
-                        "vermogensopbouw"
-                    ]
-                }}
-            }}
-            ALLEEN DIT FORMAT. Geen extra tekst ervoor of erna. Geen markdown code blocks."""
-
-            prompt = ChatPromptTemplate.from_messages([
-                SystemMessage(content=system_prompt),
-                HumanMessage(content=user_prompt)
-            ])
-
-            messages = prompt.format_messages()
-            response = self.llm.invoke(messages)
+            # Combine analyses
+            result = {
+                "missing_info": checklist_analysis["missing_topics"],
+                "explanation": checklist_analysis["explanation"],
+                "next_question": conversation_analysis["next_question"],
+                "context": conversation_analysis["context"]
+            }
             
-            content = response.content.strip()
-            logger.info(f"Initial analysis response: {content}")
-            
-            # Clean up the response by removing markdown code blocks if present
-            content = content.replace("```json", "").replace("```", "").strip()
-            
-            # Try to parse JSON, if fails return default
-            try:
-                return json.loads(content)
-            except json.JSONDecodeError as e:
-                logger.error(f"Failed to parse JSON response: {e}")
-                logger.error(f"Response content: {content}")
-                return self._get_default_missing_info()
+            logger.info(f"Combined analysis result: {result}")
+            return result
             
         except Exception as e:
             logger.error(f"Error in initial analysis: {str(e)}")
@@ -110,17 +77,30 @@ class GPTService:
                 logger.error("Prompt template not loaded")
                 return self._get_default_sections()
 
-            # Prepare additional info
+            # Get conversation history and additional info
             conversation_history = self._format_additional_info(app_state)
+            
+            # Get checklist analysis for remaining gaps
+            checklist_analysis = self.checklist_service.analyze_transcript(
+                transcript + "\n\n" + conversation_history
+            )
 
-            # Format the prompt template with the transcript and conversation history
+            # Format the prompt template with all available information
             formatted_prompt = self.prompt_template.format(
                 transcript=transcript,
-                conversation_history=conversation_history
+                conversation_history=conversation_history,
+                checklist=json.dumps(CHECKLIST, ensure_ascii=False),
+                missing_info=json.dumps(checklist_analysis["missing_topics"], ensure_ascii=False)
             )
 
             prompt = ChatPromptTemplate.from_messages([
-                SystemMessage(content="Je bent een ervaren hypotheekadviseur die gespecialiseerd is in het analyseren van klantgesprekken en het opstellen van uitgebreide adviesrapporten."),
+                SystemMessage(content="""Je bent een ervaren hypotheekadviseur die gespecialiseerd is in het analyseren 
+                van klantgesprekken en het opstellen van uitgebreide adviesrapporten.
+                
+                Gebruik de checklist om te controleren of alle belangrijke onderwerpen zijn behandeld.
+                Identificeer eventuele ontbrekende informatie en geef duidelijk aan wat er nog besproken moet worden.
+                
+                Baseer je advies ALLEEN op expliciet genoemde informatie uit het transcript en de aanvullende gesprekken."""),
                 HumanMessage(content=formatted_prompt)
             ])
 
@@ -135,7 +115,12 @@ class GPTService:
                 logger.error("Response missing required tags")
                 return self._get_default_sections()
 
-            return self._parse_sections(content)
+            sections = self._parse_sections(content)
+            
+            # Add missing information warnings to each section
+            sections = self._add_missing_info_warnings(sections, checklist_analysis["missing_topics"])
+            
+            return sections
             
         except Exception as e:
             logger.error(f"Error in transcript analysis: {str(e)}")
@@ -199,14 +184,30 @@ class GPTService:
             logger.error(f"Error parsing sections: {str(e)}")
             return self._get_default_sections()
 
+    def _add_missing_info_warnings(self, sections: Dict[str, str], missing_info: Dict[str, list]) -> Dict[str, str]:
+        """Adds warnings about missing information to each section."""
+        section_mapping = {
+            "adviesmotivatie_leningdeel": "leningdeel",
+            "adviesmotivatie_werkloosheid": "werkloosheid",
+            "adviesmotivatie_aow": "aow"
+        }
+        
+        for section, content in sections.items():
+            checklist_key = section_mapping.get(section)
+            if checklist_key and checklist_key in missing_info and missing_info[checklist_key]:
+                warning = "\n\nLET OP - Ontbrekende informatie:\n"
+                warning += "\n".join(f"- {item}" for item in missing_info[checklist_key])
+                sections[section] = content + warning
+        
+        return sections
+
     def _get_default_missing_info(self) -> Dict[str, Any]:
         """Returns default missing information structure."""
         return {
-            "missing_info": {
-                "leningdeel": ["leningbedrag", "NHG keuze", "rentevaste periode", "hypotheekvorm"],
-                "werkloosheid": ["huidige arbeidssituatie", "werkloosheidsrisico", "gewenste dekking"],
-                "aow": ["pensioenleeftijd", "pensioenwensen", "vermogensopbouw"]
-            }
+            "missing_info": CHECKLIST,
+            "explanation": "Transcript bevat onvoldoende informatie voor analyse",
+            "next_question": "Kunt u mij vertellen wat het gewenste leningbedrag is?",
+            "context": "We beginnen met de basisinformatie voor uw hypotheekaanvraag."
         }
 
     def _get_default_sections(self) -> Dict[str, str]:
