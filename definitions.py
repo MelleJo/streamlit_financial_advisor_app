@@ -90,7 +90,7 @@ Let op: Je mag het originele advies NIET wijzigen, alleen aanvullen met de uitle
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o-mini",  # of "gpt-4o" voor uitgebreidere resultaten
+            model="gpt-4o-mini",  
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7
         )

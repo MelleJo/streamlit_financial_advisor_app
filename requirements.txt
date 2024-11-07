@@ -10,3 +10,5 @@ streamlit-lottie
 requests
 streamlit-option-menu
 python-docx
+langchain-openai
+langchain-core
