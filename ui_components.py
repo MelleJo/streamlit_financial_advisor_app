@@ -22,7 +22,6 @@ logger = logging.getLogger(__name__)
 def apply_custom_css():
     st.markdown("""
     <style>
-    /* Your existing CSS styles */
     .term-highlight {
         background: linear-gradient(120deg, #E8F0FE 0%, #d2e3fc 100%);
         border-radius: 4px;
@@ -93,18 +92,6 @@ def render_results(app_state):
     if 'enhanced_texts' not in st.session_state:
         st.session_state.enhanced_texts = {}
 
-    # Add JavaScript for term click handling
-    st.markdown("""
-        <script>
-        function handleTermClick(term, section) {
-            window.parent.postMessage({
-                type: 'streamlit:setComponentValue',
-                value: JSON.stringify({term: term, section: section})
-            }, '*');
-        }
-        </script>
-    """, unsafe_allow_html=True)
-
     # Process each section
     for section, content in app_state.result.items():
         with st.expander(section.replace("_", " ").capitalize(), expanded=True):
@@ -116,42 +103,24 @@ def render_results(app_state):
                     if not paragraph.strip():
                         continue
                     
-                    html_parts = []
-                    current_pos = 0
-                    
                     # Find all mortgage terms in the paragraph
-                    term_positions = []
+                    terms_in_paragraph = []
                     for term in MORTGAGE_DEFINITIONS.keys():
-                        pattern = r'\b' + re.escape(term) + r'\b'
-                        for match in re.finditer(pattern, paragraph, re.IGNORECASE):
-                            term_positions.append((match.start(), match.end(), term))
+                        if re.search(r'\b' + re.escape(term) + r'\b', paragraph, re.IGNORECASE):
+                            terms_in_paragraph.append(term)
                     
-                    # Sort positions to handle overlapping terms
-                    term_positions.sort()
+                    # Display paragraph text
+                    st.markdown(f'<div class="text-paragraph">{paragraph}</div>', unsafe_allow_html=True)
                     
-                    # Build HTML with highlighted terms
-                    for start, end, term in term_positions:
-                        # Add text before the term
-                        if start > current_pos:
-                            html_parts.append(paragraph[current_pos:start])
-                        
-                        # Add highlighted term with click handler
-                        term_html = f"""<span 
-                            class="term-highlight" 
-                            onclick="handleTermClick('{term}', '{section}')"
-                            >{paragraph[start:end]}</span>"""
-                        html_parts.append(term_html)
-                        current_pos = end
-                    
-                    # Add remaining text
-                    if current_pos < len(paragraph):
-                        html_parts.append(paragraph[current_pos:])
-                    
-                    # Display the paragraph
-                    st.markdown(
-                        f'<div class="text-paragraph">{"".join(html_parts)}</div>',
-                        unsafe_allow_html=True
-                    )
+                    # Add clickable buttons for terms found in the paragraph
+                    if terms_in_paragraph:
+                        cols = st.columns(min(3, len(terms_in_paragraph)))
+                        for idx, term in enumerate(terms_in_paragraph):
+                            with cols[idx % 3]:
+                                if st.button(f"📚 {term}", key=f"{section}_{term}_{idx}"):
+                                    st.session_state.selected_term = term
+                                    st.session_state.selected_section = section
+                                    st.rerun()
             
             with col2:
                 # Show definition if term is selected for this section
@@ -187,16 +156,6 @@ def render_results(app_state):
                             if section in app_state.result:
                                 app_state.result[section] = enhanced_text
                                 st.rerun()
-
-    # Handle term selection from JavaScript
-    if 'streamlit_message' in st.session_state:
-        try:
-            data = json.loads(st.session_state.streamlit_message)
-            st.session_state.selected_term = data['term']
-            st.session_state.selected_section = data['section']
-            st.rerun()
-        except:
-            pass
 
     if st.button("Exporteer als Word-document", use_container_width=True):
         export_to_docx(app_state.result)
