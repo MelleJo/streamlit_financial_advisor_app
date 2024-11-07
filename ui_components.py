@@ -382,66 +382,35 @@ def process_transcript(transcript, gpt_service, app_state):
         st.error("Er is geen transcript om te analyseren. Voer een transcript in, upload een bestand, of neem audio op.")
 
 def render_results(app_state):
-    """Renders the analysis results using the React AdviceModule component."""
+    """Renders the analysis results using modern UI components."""
     st.title("Analyse Resultaten")
     
     if not app_state.result:
         st.warning("Er zijn geen resultaten beschikbaar.")
         return
-        
-    # Create components placeholder
-    components_placeholder = st.empty()
-    
-    # Prepare the data for each module
-    modules_data = []
+
     for section, content in app_state.result.items():
-        if content:  # Skip empty sections
-            modules_data.append({
-                "title": section.replace("_", " ").capitalize(),
-                "content": clean_text_content(content),
-                "definitions": MORTGAGE_DEFINITIONS  # From definitions.py
-            })
-    
-    # Render all modules using a single React component
-    components_placeholder.markdown(
-        """
-        <div class="advice-modules-container" style="margin-top: 2rem;">
-            <div id="advice-modules"></div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-    
-    # Create the React component with all modules
-    st.markdown(
-        """
-        <script>
-        // Create root element for React
-        const root = ReactDOM.createRoot(document.getElementById('advice-modules'));
-        
-        // Render all modules
-        root.render(
-            React.createElement(
-                React.Fragment,
-                null,
-                modulesData.map((module, index) =>
-                    React.createElement(AdviceModule, {
-                        key: index,
-                        ...module
-                    })
-                )
-            )
-        );
-        </script>
-        """,
-        unsafe_allow_html=True
-    )
-    
+        with st.expander(section.replace("_", " ").capitalize(), expanded=True):
+            st.markdown(f"""
+                <div style="background-color: white; padding: 20px; border-radius: 10px; margin-bottom: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h3 style="margin: 0;">{section.replace("_", " ").capitalize()}</h3>
+                        <button 
+                            onclick="navigator.clipboard.writeText(document.getElementById('{section}-content').innerText)"
+                            style="background-color: #f0f2f6; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer;"
+                        >
+                            📋 Kopieer
+                        </button>
+                    </div>
+                    <div id="{section}-content" style="white-space: pre-wrap;">
+                        {content}
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+
     # Export button
     if st.button("Exporteer als Word-document", use_container_width=True):
         export_to_docx(app_state.result)
-    
-    render_feedback_section(app_state)
 
     # Navigation buttons
     col1, col2 = st.columns(2)
