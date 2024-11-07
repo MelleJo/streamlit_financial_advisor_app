@@ -5,12 +5,13 @@ from email.mime.multipart import MIMEMultipart
 from docx import Document
 from io import BytesIO
 import logging
+import re
+from definitions import MORTGAGE_DEFINITIONS, improve_explanation
 
 # Configure logging
 logging.basicConfig(filename='app.log', level=logging.INFO, 
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-
 
 def apply_custom_css():
     st.markdown("""
@@ -100,81 +101,45 @@ def apply_custom_css():
         margin-bottom: 1em;
         color: #3b82f6;
     }
+    
     .term-button {
-        display: inline;
-        color: #2563eb;
-        text-decoration: underline;
-        cursor: pointer;
-        background: none;
-        border: none;
-        padding: 0;
-        margin: 0;
-    }
-    
-    .term-explanation {
-        background-color: #f8fafc;
-        border-left: 4px solid #2563eb;
-        padding: 1rem;
-        margin: 0.5rem 0;
-        border-radius: 0 0.5rem 0.5rem 0;
-    }
-    
-    .stExpander {
-        border: 1px solid #e2e8f0;
-        border-radius: 0.5rem;
-        margin-bottom: 1rem;
-    }
-    .stButton button {
-        padding: 0;
-        border: none;
-        background: none;
-        color: #2563eb;
-        text-decoration: underline;
-        cursor: pointer;
-        margin: 0 2px;
         display: inline-block;
-    }
-    
-    .stButton button:hover {
-        color: #1e40af;
-        background: #f0f9ff;
-    }
-    
-    .definition-panel {
-        border-left: 3px solid #2563eb;
-        padding-left: 1rem;
-        margin-top: 1rem;
-    }
-    .uitleg-kaart {
-        background-color: #ffffff;
-        border-radius: 10px;
-        padding: 1.5rem;
-        border: 1px solid #e2e8f0;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        margin-bottom: 1rem;
-    }
-    
-    .uitleg-kaart h3 {
-        color: #2563eb;
-        margin-bottom: 1rem;
-        font-size: 1.2rem;
-    }
-    
-    .uitleg-content {
-        font-size: 0.95rem;
-        line-height: 1.5;
-        color: #334155;
-    }
-
-    .term-highlight {
         background-color: #E8F0FE;
-        padding: 2px 6px;
+        padding: 2px 8px;
         border-radius: 4px;
         color: #1a73e8;
         font-weight: 500;
-        cursor: pointer;
         border: none;
         margin: 0 2px;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+
+    .term-button:hover {
+        background-color: #d2e3fc;
+    }
+
+    .explanation-card {
+        background-color: white;
+        padding: 1rem;
+        border-radius: 8px;
+        border: 1px solid #e0e0e0;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .explanation-title {
+        color: #1a73e8;
+        margin-bottom: 0.5rem;
+        font-size: 1.1rem;
+        font-weight: 500;
+    }
+
+    .explanation-content {
+        color: #333;
+        font-size: 0.95rem;
+        line-height: 1.6;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -204,8 +169,6 @@ def render_progress_bar(app_state):
                 st.markdown(f"⚪ {label}")
 
 def render_choose_method(app_state):
-    
-    
     col1, col2, col3 = st.columns(3)
     with col1:
         if st.button("📝 Handmatige invoer", use_container_width=True):
@@ -286,8 +249,9 @@ def render_results(app_state):
         for section, content in result.items():
             with st.expander(section.replace("_", " ").capitalize(), expanded=True):
                 st.markdown(f'<div class="section-title">{section.replace("_", " ").capitalize()}</div>', unsafe_allow_html=True)
-                # Pass the section name as section_key
-                format_text_with_definitions(content, section)
+                # Clean the content before displaying
+                cleaned_content = clean_text_content(content)
+                format_text_with_definitions(cleaned_content, section)
         
         if st.button("Exporteer als Word-document", use_container_width=True):
             export_to_docx(result)
@@ -469,74 +433,84 @@ def render_person_details(app_state):
         else:
             st.error("Vul alstublieft alle verplichte velden in voordat u doorgaat.")
 
-def format_text_with_definitions(text, section_key):
-    """Tekst formatteren met uitleg van hypotheektermen."""
-    from definitions import MORTGAGE_DEFINITIONS, improve_explanation
-    import re
+def clean_text_content(text):
+    """Clean and format text content."""
+    # Remove excessive newlines
+    text = re.sub(r'\n\s*\n', '\n', text)
     
+    # Ensure proper spacing around sections
+    text = re.sub(r'([a-z])\n([A-Z])', r'\1\n\n\2', text)
+    
+    # Clean up bullet points
+    text = re.sub(r'\n\s*•\s*', '\n• ', text)
+    
+    return text.strip()
+
+def format_text_with_definitions(text, section_key):
+    """Format text by highlighting defined terms and making them clickable."""
     if not text:
         return text
     
-    # Maak kolommen voor layout
     col1, col2 = st.columns([2, 1])
     
-    # Initialiseer session state
     if 'selected_term' not in st.session_state:
         st.session_state.selected_term = None
         st.session_state.selected_section = None
     
     with col1:
-        current_text = text
-        for term in MORTGAGE_DEFINITIONS.keys():
-            pattern = r'\b' + re.escape(term) + r'\b'
-            matches = list(re.finditer(pattern, current_text, re.IGNORECASE))
-            
-            if matches:
-                for match in reversed(matches):
-                    start, end = match.span()
-                    button_key = f"term_{term}_{start}_{end}_{section_key}"
-                    
-                    if st.button(
-                        current_text[start:end], 
-                        key=button_key,
-                        help="Klik voor uitleg",
-                        use_container_width=False
-                    ):
-                        st.session_state.selected_term = term
-                        st.session_state.selected_section = section_key
-                    
-                    st.write(current_text[end:], unsafe_allow_html=True)
-                    current_text = current_text[:start]
+        # Clean up text first
+        text = clean_text_content(text)
+        paragraphs = text.split('\n')
+        
+        for paragraph in paragraphs:
+            if not paragraph.strip():
+                continue
                 
-                if current_text:
-                    st.write(current_text, unsafe_allow_html=True)
+            current_text = paragraph
+            for term in MORTGAGE_DEFINITIONS.keys():
+                pattern = r'\b' + re.escape(term) + r'\b'
+                current_text = re.sub(
+                    pattern,
+                    lambda m: f'<button class="term-button" onclick="streamlit.setComponentValue(\'{{"term": "{term}", "section": "{section_key}"}}\');">{m.group()}</button>',
+                    current_text,
+                    flags=re.IGNORECASE
+                )
+            
+            st.markdown(
+                f'<div style="margin-bottom: 1em;">{current_text}</div>',
+                unsafe_allow_html=True
+            )
     
     with col2:
         if (st.session_state.selected_term and 
             st.session_state.selected_section == section_key):
             
-            st.markdown("""
-            <div class="uitleg-kaart">
-                <h3>📚 {}</h3>
-                <div class="uitleg-content">
-                    {}
+            st.markdown(f"""
+                <div class="explanation-card">
+                    <div class="explanation-title">📚 {st.session_state.selected_term}</div>
+                    <div class="explanation-content">
+                        {MORTGAGE_DEFINITIONS[st.session_state.selected_term].replace('\n', '<br>')}
+                    </div>
                 </div>
-            </div>
-            """.format(
-                st.session_state.selected_term,
-                MORTGAGE_DEFINITIONS[st.session_state.selected_term]
-            ), unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
             
             if st.button("➕ Voeg uitleg toe", 
                         type="primary",
                         use_container_width=True,
                         key=f"add_{section_key}"):
-                        
+                
                 enhanced_text = improve_explanation(
                     st.session_state.selected_term,
                     MORTGAGE_DEFINITIONS[st.session_state.selected_term],
                     text,
                     st.session_state.openai_client
                 )
-                st.session_state.enhanced_texts[section_key] = enhanced_text
-                st.rerun()
+                
+                # Update both states
+                if enhanced_text:
+                    st.session_state.enhanced_texts = getattr(st.session_state, 'enhanced_texts', {})
+                    st.session_state.enhanced_texts[section_key] = enhanced_text
+                    if hasattr(st.session_state, 'app_state'):
+                        if section_key in st.session_state.app_state.result:
+                            st.session_state.app_state.result[section_key] = enhanced_text
+                            st.rerun()
