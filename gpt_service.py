@@ -156,70 +156,126 @@ class GPTService:
                 return self._get_default_analysis_response("Geen transcript aangeleverd")
 
             # Format additional info if available
-            additional_info = ""
+            additional_info = "Geen aanvullende informatie beschikbaar."  # Default value
             if app_state and app_state.additional_info:
                 additional_info = "Aanvullende informatie:\n"
                 for qa in app_state.additional_info.values():
                     additional_info += f"\nVraag: {qa['question']}\nAntwoord: {qa['answer']}\n"
 
+            # Modified prompt to force structured output even with minimal information
+            messages = [
+                SystemMessage(content="""Je bent een hypotheekadviseur die adviesnotities analyseert.
+                Je MOET ALTIJD antwoorden met de drie gevraagde secties, zelfs als er weinig informatie is.
+                Als informatie ontbreekt, geef dan aan wat er mist en wat er nodig is."""),
+                HumanMessage(content=f"""
+                Transcript van de adviesnotitie:
+                {transcript}
+
+                {additional_info}
+
+                Retourneer ALTIJD een analyse in dit format, zelfs bij beperkte informatie:
+
+                <adviesmotivatie_leningdeel>
+                - Analyse van beschikbare leningdeel informatie
+                - Identificatie van ontbrekende informatie
+                - Aanbevelingen voor vervolgstappen
+                </adviesmotivatie_leningdeel>
+
+                <adviesmotivatie_werkloosheid>
+                - Analyse van beschikbare werkloosheid informatie
+                - Identificatie van ontbrekende informatie
+                - Aanbevelingen voor vervolgstappen
+                </adviesmotivatie_werkloosheid>
+
+                <adviesmotivatie_aow>
+                - Analyse van beschikbare AOW informatie
+                - Identificatie van ontbrekende informatie
+                - Aanbevelingen voor vervolgstappen
+                </adviesmotivatie_aow>
+                """)
+            ]
+
             # Get response from LLM
-            messages = self.analysis_prompt.format_messages(
-                transcript=transcript,
-                additional_info=additional_info
-            )
             response = self.llm.invoke(messages)
-            
-            # Extract content
             content = response.content
             logger.info(f"Raw LLM response: {content}")
-            
-            # Initialize sections
+
+            # Handle unstructured responses
+            if not any(tag in content for tag in ['<adviesmotivatie_leningdeel>', '<adviesmotivatie_werkloosheid>', '<adviesmotivatie_aow>']):
+                return {
+                    "adviesmotivatie_leningdeel": "Op basis van de beperkte informatie kunnen we nog geen volledig advies geven. We hebben meer details nodig over het gewenste leningbedrag, NHG-wensen, en hypotheekvorm.",
+                    "adviesmotivatie_werkloosheid": "Er is meer informatie nodig over de huidige arbeidssituatie en gewenste dekking bij werkloosheid om een gedegen advies te kunnen geven.",
+                    "adviesmotivatie_aow": "Voor een AOW-advies hebben we meer details nodig over de pensioenwensen en huidige pensioenopbouw."
+                }
+
+            # Parse sections
             sections = {
                 "adviesmotivatie_leningdeel": [],
                 "adviesmotivatie_werkloosheid": [],
                 "adviesmotivatie_aow": []
             }
             
-            # Parse sections using list accumulation
-            lines = content.split('\n')
             current_section = None
-            
-            for line in lines:
+            for line in content.split('\n'):
                 line = line.strip()
                 if not line:
                     continue
                     
                 if line.startswith('<adviesmotivatie_'):
-                    tag = line.strip('<>')
-                    if tag in sections:
-                        current_section = tag
+                    current_section = line.strip('<>')
                 elif line.startswith('</adviesmotivatie_'):
                     current_section = None
                 elif current_section and current_section in sections:
                     sections[current_section].append(line)
-            
-            # Convert accumulated lists to strings
+
+            # Convert to final format with default messages for empty sections
             result = {}
             for section, lines in sections.items():
-                if lines:  # Only include sections that have content
+                if lines:
                     result[section] = '\n'.join(lines)
                 else:
-                    result[section] = "Geen informatie beschikbaar voor deze sectie."
-            
-            # Verify we have all required sections
-            if len(result) != 3:
-                return self._get_default_analysis_response("Incomplete analyse")
-                
+                    result[section] = self._get_default_section_content(section)
+
             return result
-            
+
         except Exception as e:
             logger.error(f"Error analyzing transcript: {str(e)}")
             return self._get_default_analysis_response(f"Error: {str(e)}")
 
-    def _get_default_analysis_response(self, error_msg: str) -> Dict[str, str]:
-        """Returns a default analysis response."""
-        return {
-            "adviesmotivatie_leningdeel": f"Er is een fout opgetreden bij de analyse: {error_msg}",
-            "adviesmotivatie_werkloosheid": f"Er is een fout opgetreden bij de analyse: {error_msg}",
-            "adviesmotivatie_aow": f"Er is een fout opgetreden bij de analyse: {error_msg}"
+    def _get_default_section_content(self, section: str) -> str:
+        """Returns default content for empty sections."""
+        defaults = {
+            "adviesmotivatie_leningdeel": """
+            Er is onvoldoende informatie beschikbaar voor een volledig leningdeel advies.
+            
+            Benodigde informatie:
+            - Gewenst leningbedrag
+            - Voorkeur voor NHG
+            - Gewenste hypotheekvorm
+            - Voorkeuren rentevaste periode
+            
+            Advies: Plan een vervolggesprek om deze aspecten te bespreken.""",
+            
+            "adviesmotivatie_werkloosheid": """
+            Er is onvoldoende informatie beschikbaar voor een werkloosheidsadvies.
+            
+            Benodigde informatie:
+            - Huidige arbeidssituatie
+            - Risicoprofiel
+            - Gewenste dekking
+            - Buffer mogelijkheden
+            
+            Advies: Bespreek deze punten in een vervolgafspraak.""",
+            
+            "adviesmotivatie_aow": """
+            Er is onvoldoende informatie beschikbaar voor een AOW/pensioenadvies.
+            
+            Benodigde informatie:
+            - Huidige pensioenopbouw
+            - Gewenste situatie na pensionering
+            - AOW-leeftijd en planning
+            - Vermogensopbouw wensen
+            
+            Advies: Plan een pensioenanalyse gesprek."""
         }
+        return defaults.get(section, "Geen informatie beschikbaar voor deze sectie.")
