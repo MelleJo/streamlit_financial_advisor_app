@@ -23,6 +23,7 @@ import logging
 import re
 from definitions import MORTGAGE_DEFINITIONS, improve_explanation
 
+
 # Configure logging
 logging.basicConfig(filename='app.log', level=logging.INFO, 
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')

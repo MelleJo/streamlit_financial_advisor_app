@@ -14,10 +14,18 @@ import ui_components as ui
 from app_state import AppState
 from openai import OpenAI
 from audio_service import AudioService
+from streamlit.components.v1 import declare_component
+from checklist_analysis_service import ChecklistAnalysisService
 
 # Page config
 st.set_page_config(page_title="AI Hypotheek Assistent", page_icon="🏠", layout="wide")
 ui.apply_custom_css()
+
+# Register the custom component
+advice_module = declare_component(
+    "advice_module",
+    path="components"  # The directory containing the frontend files
+)
 
 # Initialize services and state
 if 'app_state' not in st.session_state:
@@ -35,7 +43,8 @@ def initialize_services():
     return {
         'gpt_service': GPTService(api_key=api_key),
         'audio_service': AudioService(),
-        'transcription_service': TranscriptionService()
+        'transcription_service': TranscriptionService(),
+        'checklist_service': ChecklistAnalysisService(api_key=api_key)
     }
 
 def handle_questions_complete(answers):

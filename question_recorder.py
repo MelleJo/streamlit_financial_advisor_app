@@ -1,157 +1,190 @@
 """
 File: question_recorder.py
-Implements the question recording interface for the AI Hypotheek Assistent.
-This module provides a structured interface for recording mortgage advice notes,
-presenting a series of predefined questions about mortgage details (loan amount,
-mortgage type, fixed interest period, etc.). It includes a recording component
-that allows advisors to record their complete advice in one session, with
-automatic transcription and processing of the recorded audio.
+Implements an intelligent question recording interface based on checklist analysis.
 """
 
 import streamlit as st
 from streamlit_mic_recorder import mic_recorder
-from typing import List, Dict, Any, Callable
-from transcription_service import TranscriptionService
-
-QUESTIONS = [
-    {
-        "question": "Wat is het gewenste leningbedrag van uw cliënt?",
-        "context": "Noteer het bedrag dat de cliënt wil lenen voor de hypotheek.",
-        "category": "leningdeel"
-    },
-    {
-        "question": "Heeft uw cliënt interesse in NHG (Nationale Hypotheek Garantie)?",
-        "context": "Bespreek of de cliënt gebruik wil maken van NHG en waarom.",
-        "category": "leningdeel"
-    },
-    {
-        "question": "Welke hypotheekvorm heeft uw cliënt gekozen?",
-        "context": "Annuïteit, lineair of een andere vorm - inclusief motivatie.",
-        "category": "leningdeel"
-    },
-    {
-        "question": "Welke rentevaste periode wenst uw cliënt?",
-        "context": "Bespreek de gekozen periode en de overwegingen daarbij.",
-        "category": "leningdeel"
-    },
-    {
-        "question": "Wat is de arbeidssituatie van uw cliënt en hoe kijkt deze aan tegen werkloosheidsrisico's?",
-        "context": "Huidige arbeidscontract, sector, en risico-inschatting.",
-        "category": "werkloosheid"
-    },
-    {
-        "question": "Wat zijn de wensen van uw cliënt voor de hypotheek na pensionering?",
-        "context": "Bespreek de AOW-leeftijd, pensioenopbouw en gewenste situatie.",
-        "category": "aow"
-    }
-]
+from typing import Dict, Any, Callable
+import asyncio
+from checklist_analysis_service import ChecklistAnalysisService, CHECKLIST_SECTIONS
 
 def render_question_recorder(
-    transcription_service: TranscriptionService,
+    transcription_service,
+    checklist_service: ChecklistAnalysisService,
     on_complete: Callable[[Dict[str, str]], None],
-    on_skip: Callable[[], None]
+    on_skip: Callable[[], None],
+    initial_transcript: str
 ):
-    """Renders an interface for recording answers to all questions at once."""
+    """Renders an intelligent question recording interface based on checklist analysis."""
     
+    # Initialize session state for tracking questions and answers
+    if 'current_question' not in st.session_state:
+        st.session_state.current_question = None
+    if 'answers' not in st.session_state:
+        st.session_state.answers = []
+    if 'missing_points' not in st.session_state:
+        # Analyze initial transcript when first loading
+        analysis_result = asyncio.run(checklist_service.analyze_transcript(initial_transcript))
+        st.session_state.missing_points = analysis_result.get('missing_points', {})
+        st.session_state.current_question = analysis_result.get('next_questions', [{}])[0]
+
+    # Custom CSS for better visual hierarchy
     st.markdown("""
         <style>
-        .question-list {
+        .checklist-container {
             background: white;
-            padding: 2rem;
-            border-radius: 15px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-            margin-bottom: 2rem;
-        }
-        .question-item {
-            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-            border: 1px solid #e2e8f0;
-            border-radius: 10px;
             padding: 1.5rem;
-            margin: 1rem 0;
-            transition: all 0.2s ease;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            margin-bottom: 1.5rem;
         }
-        .question-item:hover {
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-            transform: translateY(-2px);
+        .checklist-section {
+            margin-bottom: 1rem;
         }
-        .question-number {
-            color: #1a73e8;
-            font-size: 0.9rem;
+        .checklist-section-title {
             font-weight: 600;
+            color: #1a73e8;
             margin-bottom: 0.5rem;
         }
-        .question-text {
-            color: #1f2937;
-            font-size: 1.1rem;
-            font-weight: 500;
-            margin-bottom: 0.5rem;
+        .checklist-item {
+            display: flex;
+            align-items: center;
+            padding: 0.5rem;
+            border-radius: 4px;
         }
-        .question-context {
-            color: #6b7280;
-            font-size: 0.9rem;
-            font-style: italic;
+        .checklist-item.missing {
+            background-color: #fef2f2;
         }
-        .recording-section {
+        .checklist-item.complete {
+            background-color: #f0fdf4;
+        }
+        .question-container {
             background: #f8fafc;
-            border-radius: 10px;
             padding: 1.5rem;
-            margin-top: 1rem;
+            border-radius: 10px;
+            margin-top: 1.5rem;
+        }
+        .context-box {
+            background: #e8f0fe;
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            font-style: italic;
+            color: #1e40af;
         }
         </style>
     """, unsafe_allow_html=True)
 
-    st.markdown("### 📝 Adviesnotities opnemen")
-    st.markdown("""
-        Hieronder ziet u alle onderwerpen die aan bod moeten komen in uw advies. 
-        U kunt uw complete adviesnotitie in één keer opnemen.
-    """)
-
-    # Display all questions
-    st.markdown('<div class="question-list">', unsafe_allow_html=True)
-    for i, q in enumerate(QUESTIONS, 1):
-        st.markdown(f"""
-            <div class="question-item">
-                <div class="question-number">Onderwerp {i}</div>
-                <div class="question-text">{q['question']}</div>
-                <div class="question-context">{q['context']}</div>
-            </div>
-        """, unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    # Recording section
-    st.markdown('<div class="recording-section">', unsafe_allow_html=True)
-    col1, col2 = st.columns([2, 1])
+    # Show checklist progress
+    st.markdown("### 📋 Voortgang Checklist")
     
-    with col1:
-        st.markdown("#### 🎙️ Neem uw adviesnotitie op")
-        audio = mic_recorder(
-            start_prompt="Start Opname",
-            stop_prompt="Stop Opname",
-            key="full_recording"
-        )
-
-    with col2:
-        if st.button("🏁 Sla opname over", use_container_width=True, type="secondary"):
-            on_skip()
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    if audio:
-        with st.spinner("Uw opname wordt verwerkt..."):
-            # Create a prompt that includes all questions
-            context_prompt = "Hypotheekadvies notitie met de volgende onderwerpen: " + \
-                           "; ".join(q['question'] for q in QUESTIONS)
+    with st.expander("Bekijk voortgang", expanded=True):
+        st.markdown('<div class="checklist-container">', unsafe_allow_html=True)
+        
+        for section, points in CHECKLIST_SECTIONS.items():
+            st.markdown(f'<div class="checklist-section">', unsafe_allow_html=True)
+            st.markdown(f'<div class="checklist-section-title">{section.capitalize()}</div>', unsafe_allow_html=True)
             
-            transcript = transcription_service.transcribe(
-                audio['bytes'],
-                mode="accurate",
-                prompt=context_prompt
+            for point in points:
+                is_missing = point in st.session_state.missing_points.get(section, [])
+                status_class = "missing" if is_missing else "complete"
+                icon = "❌" if is_missing else "✅"
+                
+                st.markdown(
+                    f'<div class="checklist-item {status_class}">{icon} {point}</div>',
+                    unsafe_allow_html=True
+                )
+            
+            st.markdown('</div>', unsafe_allow_html=True)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    # Show current question and recording interface
+    if st.session_state.current_question:
+        st.markdown("### 🎙️ Volgende Vraag")
+        st.markdown('<div class="question-container">', unsafe_allow_html=True)
+        
+        # Show question context
+        if st.session_state.current_question.get('context'):
+            st.markdown(
+                f'<div class="context-box">{st.session_state.current_question["context"]}</div>',
+                unsafe_allow_html=True
             )
-            
-            if transcript:
-                result = {
-                    "full_recording": transcript,
-                    "questions": QUESTIONS
-                }
-                on_complete(result)
+        
+        # Show the question
+        st.write(f"**{st.session_state.current_question['question']}**")
+        
+        # Recording interface
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            audio = mic_recorder(
+                start_prompt="Start Opname",
+                stop_prompt="Stop Opname",
+                key="answer_recording"
+            )
+
+        with col2:
+            if st.button("➡️ Volgende Vraag", use_container_width=True):
+                # Generate next question
+                next_question = asyncio.run(checklist_service.generate_next_question(
+                    st.session_state.missing_points,
+                    st.session_state.answers
+                ))
+                
+                if next_question.get('question'):
+                    st.session_state.current_question = next_question
+                else:
+                    # No more questions needed
+                    on_complete({
+                        'answers': st.session_state.answers,
+                        'missing_points': st.session_state.missing_points
+                    })
                 st.rerun()
+
+        # Process recorded answer
+        if audio:
+            with st.spinner("Antwoord wordt verwerkt..."):
+                transcript = transcription_service.transcribe(
+                    audio['bytes'],
+                    mode="accurate",
+                    language="nl",
+                    prompt=st.session_state.current_question['question']
+                )
+                
+                if transcript:
+                    # Store the answer
+                    st.session_state.answers.append({
+                        'question': st.session_state.current_question['question'],
+                        'answer': transcript,
+                        'related_points': st.session_state.current_question.get('related_points', [])
+                    })
+                    
+                    # Update missing points
+                    for point in st.session_state.current_question.get('related_points', []):
+                        for section in st.session_state.missing_points:
+                            if point in st.session_state.missing_points[section]:
+                                st.session_state.missing_points[section].remove(point)
+                    
+                    # Get next question
+                    next_question = asyncio.run(checklist_service.generate_next_question(
+                        st.session_state.missing_points,
+                        st.session_state.answers
+                    ))
+                    
+                    if next_question.get('question'):
+                        st.session_state.current_question = next_question
+                    else:
+                        # No more questions needed
+                        on_complete({
+                            'answers': st.session_state.answers,
+                            'missing_points': st.session_state.missing_points
+                        })
+                    st.rerun()
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Skip button
+    if st.button("🏁 Afronden", use_container_width=True, type="secondary"):
+        on_skip()
