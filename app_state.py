@@ -1,3 +1,11 @@
+"""
+File: app_state.py
+Manages the application state for the AI Hypotheek Assistent.
+This class handles all state management including the current step in the application flow,
+transcript data, analysis results, missing information, and conversation history.
+It provides methods to modify and retrieve state data in a controlled manner.
+"""
+
 from typing import Dict, Any, Optional
 
 class AppState:

@@ -1,3 +1,12 @@
+"""
+File: conversation_ui.py
+Handles the chat interface UI components for the AI Hypotheek Assistent.
+This module provides functions to render and manage the chat interface,
+including message display, user input handling, and conversation flow.
+It implements a custom styled chat UI with distinct message bubbles for
+user and AI responses, along with real-time message processing.
+"""
+
 import streamlit as st
 import json
 from typing import Dict, Any

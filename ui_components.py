@@ -1,3 +1,18 @@
+"""
+File: ui_components.py
+Provides all UI components and styling for the AI Hypotheek Assistent.
+This module handles the complete user interface of the application, including:
+- Custom CSS styling and theme configuration
+- Progress bar and step navigation
+- Input methods (manual, file upload, audio recording)
+- Results display with interactive mortgage term definitions
+- Feedback collection and email functionality
+- Document export capabilities
+- Person selection and details forms
+The module ensures a consistent, professional look and feel throughout the application
+while providing interactive elements for better user engagement.
+"""
+
 import streamlit as st
 import smtplib
 from email.mime.text import MIMEText
@@ -100,7 +115,33 @@ def apply_custom_css():
         color: #3b82f6;
     }
 
-    /* Enhanced explanation card styling */
+    /* Term highlighting and interaction */
+    .term-highlight {
+        background: linear-gradient(120deg, #E8F0FE 0%, #d2e3fc 100%);
+        border-radius: 4px;
+        padding: 2px 6px;
+        margin: 0 2px;
+        cursor: pointer;
+        display: inline-block;
+        transition: all 0.2s ease;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        color: #1a73e8;
+        text-decoration: none;
+        font-weight: 500;
+    }
+    
+    .term-highlight:hover {
+        background: linear-gradient(120deg, #d2e3fc 0%, #c2d9fc 100%);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+        transform: translateY(-1px);
+    }
+    
+    .term-highlight:active {
+        transform: translateY(0);
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+
+    /* Explanation card styling */
     .explanation-card {
         background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
         padding: 1.25rem;
@@ -155,28 +196,6 @@ def apply_custom_css():
         letter-spacing: 0.01em;
     }
 
-    .term-highlight {
-        background: linear-gradient(120deg, #E8F0FE 0%, #d2e3fc 100%);
-        border-radius: 4px;
-        padding: 2px 6px;
-        margin: 0 2px;
-        cursor: pointer;
-        display: inline-block;
-        transition: all 0.2s ease;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-    }
-    
-    .term-highlight:hover {
-        background: linear-gradient(120deg, #d2e3fc 0%, #c2d9fc 100%);
-        box-shadow: 0 2px 4px rgba(0,0,0,0.15);
-        transform: translateY(-1px);
-    }
-    
-    .term-highlight:active {
-        transform: translateY(0);
-        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-    }
-
     /* Chat interface styling */
     .stChatMessage {
         background-color: transparent !important;
@@ -197,11 +216,69 @@ def apply_custom_css():
     }
     
     .chat-container {
-        background-color: #ffffff;
+        background-color: white;
         border-radius: 12px;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
         margin: 20px 0;
         padding: 20px;
+    }
+    
+    /* Additional utility classes */
+    .hidden {
+        display: none !important;
+    }
+    
+    .flex {
+        display: flex !important;
+    }
+    
+    .flex-col {
+        flex-direction: column !important;
+    }
+    
+    .items-center {
+        align-items: center !important;
+    }
+    
+    .justify-between {
+        justify-content: space-between !important;
+    }
+    
+    .gap-4 {
+        gap: 1rem !important;
+    }
+    
+    .rounded-full {
+        border-radius: 9999px !important;
+    }
+    
+    .transition-all {
+        transition: all 0.2s ease !important;
+    }
+
+    /* Override Streamlit's default styling for better visual hierarchy */
+    .block-container {
+        padding-top: 2rem !important;
+        padding-bottom: 2rem !important;
+    }
+
+    .element-container {
+        margin-bottom: 1rem !important;
+    }
+
+    /* Make the interface more compact on smaller screens */
+    @media screen and (max-width: 768px) {
+        .block-container {
+            padding: 1rem !important;
+        }
+
+        .explanation-card {
+            padding: 1rem;
+        }
+
+        .text-paragraph {
+            font-size: 0.9rem;
+        }
     }
     </style>
     """, unsafe_allow_html=True)
@@ -552,6 +629,16 @@ def format_text_with_definitions(text, section_key):
                 # Add highlighted term with click handler
                 term_html = f"""<span 
                     class="term-highlight" 
+                    style="
+                        background: linear-gradient(120deg, #E8F0FE 0%, #d2e3fc 100%);
+                        border-radius: 4px;
+                        padding: 2px 6px;
+                        margin: 0 2px;
+                        cursor: pointer;
+                        display: inline-block;
+                        transition: all 0.2s ease;
+                        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+                    "
                     onclick="handleTermClick('{term}')"
                 >{paragraph[start:end]}</span>"""
                 html_parts.append(term_html)

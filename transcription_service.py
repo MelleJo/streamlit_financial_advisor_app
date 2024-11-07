@@ -1,3 +1,12 @@
+"""
+File: transcription_service.py
+Handles audio transcription functionality for the AI Hypotheek Assistent.
+This service provides audio transcription capabilities using both Groq and OpenAI's Whisper models.
+It implements a fallback mechanism where if the primary transcription service (Groq) fails,
+it automatically falls back to using OpenAI's Whisper. The service supports different transcription
+modes (fast, accurate, fallback) and handles various audio input formats.
+"""
+
 import streamlit as st
 from openai import OpenAI
 from groq import Groq

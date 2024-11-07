@@ -1,3 +1,15 @@
+"""
+File: conversation_service.py
+Manages the conversational flow and analysis for the AI Hypotheek Assistent.
+This service handles the interactive dialogue between the user and the AI advisor,
+utilizing GPT-4 to:
+1. Analyze transcripts to identify complete and missing information
+2. Process user responses and determine appropriate follow-up questions
+3. Maintain conversation context and history
+The service ensures structured information gathering through JSON-formatted responses
+and handles conversation state management for mortgage advice sessions.
+"""
+
 import streamlit as st
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder

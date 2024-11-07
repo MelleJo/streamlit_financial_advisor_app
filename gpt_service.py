@@ -1,3 +1,13 @@
+"""
+File: gpt_service.py
+Provides GPT-based analysis and advice generation for the AI Hypotheek Assistent.
+This service handles all interactions with OpenAI's GPT models, providing two main functions:
+1. Initial transcript analysis to identify missing information in mortgage advice conversations
+2. Comprehensive analysis of transcripts to generate structured mortgage advice reports
+The service includes robust error handling, default responses, and structured output formatting
+using XML tags for consistent advice sections (loan details, unemployment risks, and retirement planning).
+"""
+
 import logging
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate

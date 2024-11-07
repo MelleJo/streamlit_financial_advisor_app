@@ -1,3 +1,11 @@
+"""
+File: main.py
+Main application file for the AI Hypotheek Assistent (Mortgage Advisor).
+This file serves as the entry point and orchestrates the entire application flow,
+including the UI setup, service initialization, and handling of different application states
+(input collection, additional questions, and results presentation).
+"""
+
 import streamlit as st
 from transcription_service import TranscriptionService
 from gpt_service import GPTService
@@ -17,6 +25,9 @@ if 'app_state' not in st.session_state:
 
 if 'openai_client' not in st.session_state:
     st.session_state.openai_client = OpenAI(api_key=st.secrets["API"]["OPENAI_API_KEY"])
+
+if 'enhanced_texts' not in st.session_state:
+    st.session_state.enhanced_texts = {}
 
 def initialize_services():
     """Initialize all required services."""

@@ -1,3 +1,13 @@
+"""
+File: definitions.py
+Contains mortgage-related definitions and explanation enhancement functionality for the AI Hypotheek Assistent.
+This module provides:
+1. A comprehensive dictionary of mortgage-related terms and their explanations in Dutch,
+   covering key concepts like NHG, mortgage types, fixed interest periods, etc.
+2. A function to improve explanations by integrating basic definitions into the original
+   advice text in a natural and professional way using GPT-4.
+"""
+
 MORTGAGE_DEFINITIONS = {
     "NHG": """
 De Nationale Hypotheek Garantie (NHG) is een garantie op hypotheken. Met NHG bent u verzekerd van een verantwoorde hypotheek die aansluit op uw situatie. Bovendien kunt u met NHG profiteren van een rentevoordeel. Hierdoor zijn uw maandlasten lager.

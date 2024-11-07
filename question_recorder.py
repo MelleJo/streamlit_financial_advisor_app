@@ -1,3 +1,13 @@
+"""
+File: question_recorder.py
+Implements the question recording interface for the AI Hypotheek Assistent.
+This module provides a structured interface for recording mortgage advice notes,
+presenting a series of predefined questions about mortgage details (loan amount,
+mortgage type, fixed interest period, etc.). It includes a recording component
+that allows advisors to record their complete advice in one session, with
+automatic transcription and processing of the recorded audio.
+"""
+
 import streamlit as st
 from streamlit_mic_recorder import mic_recorder
 from typing import List, Dict, Any, Callable
