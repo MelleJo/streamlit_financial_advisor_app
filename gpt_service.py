@@ -16,29 +16,42 @@ class GPTService:
             openai_api_key=api_key
         )
         
-        # Initial analysis prompt
+        # Initial analysis prompt - Modified to force structured output
         self.initial_analysis_prompt = ChatPromptTemplate.from_messages([
             SystemMessage(content="""Je bent een hypotheekadviseur die een initiële analyse uitvoert.
-            Identificeer ontbrekende informatie voor een volledig hypotheekadvies."""),
+            Je MOET antwoorden in het gevraagde JSON format, geen extra tekst."""),
             HumanMessage(content="""
-            Analyseer dit transcript en identificeer ontbrekende informatie:
-            {transcript}
+            Analyseer dit transcript en retourneer ALLEEN een JSON object in exact dit format:
             
-            Retourneer de analyse in dit format:
             {
                 "missing_info": {
-                    "leningdeel": ["ontbrekend item 1", "ontbrekend item 2"],
-                    "werkloosheid": ["ontbrekend item 1", "ontbrekend item 2"],
-                    "aow": ["ontbrekend item 1", "ontbrekend item 2"]
+                    "leningdeel": [
+                        "leningbedrag",
+                        "NHG keuze",
+                        "rentevaste periode",
+                        "hypotheekvorm"
+                    ],
+                    "werkloosheid": [
+                        "huidige arbeidssituatie",
+                        "werkloosheidsrisico",
+                        "gewenste dekking"
+                    ],
+                    "aow": [
+                        "pensioenleeftijd",
+                        "pensioenwensen",
+                        "vermogensopbouw"
+                    ]
                 }
             }
+
+            Transcript: {transcript}
             """)
         ])
         
-        # Full analysis prompt
+        # Full analysis prompt - Modified for more structured output
         self.analysis_prompt = ChatPromptTemplate.from_messages([
             SystemMessage(content="""Je bent een hypotheekadviseur die adviesnotities analyseert. 
-            Analyseer de notitie met betrekking tot de leningdeel, werkloosheid, en AOW aspecten."""),
+            Focus op concrete details en cijfers in je analyse."""),
             HumanMessage(content="""
             Transcript van de adviesnotitie:
             {transcript}
@@ -46,21 +59,28 @@ class GPTService:
             Eventuele aanvullende informatie:
             {additional_info}
 
-            Genereer een gestructureerd adviesrapport met de volgende secties:
+            Genereer een gestructureerd adviesrapport met deze exacte secties:
             
             <adviesmotivatie_leningdeel>
-            - Gedetailleerde analyse van het leningdeel
-            - Inclusief bedragen, voorwaarden en motivatie
+            - Leningbedrag en onderbouwing
+            - NHG keuze en motivatie
+            - Gekozen hypotheekvorm en toelichting
+            - Rentevaste periode en overwegingen
+            - Maandlasten berekening
             </adviesmotivatie_leningdeel>
 
             <adviesmotivatie_werkloosheid>
-            - Analyse van werkloosheidsrisico's en maatregelen
-            - Inclusief verzekeringen en buffer
+            - Huidige arbeidssituatie
+            - Werkloosheidsrisico analyse
+            - Benodigde maandelijkse buffer
+            - Verzekeringsdekking advies
             </adviesmotivatie_werkloosheid>
 
             <adviesmotivatie_aow>
-            - Analyse van de pensioensituatie
-            - Inclusief AOW en aanvullende voorzieningen
+            - Verwachte pensioendatum
+            - Pensioenopbouw status
+            - Hypotheeksituatie bij pensioen
+            - Vermogensplanning advies
             </adviesmotivatie_aow>
             """)
         ])
@@ -68,40 +88,62 @@ class GPTService:
     def analyze_initial_transcript(self, transcript: str) -> Dict[str, Any]:
         """Analyzes the initial transcript to identify missing information."""
         try:
+            if not transcript or len(transcript.strip()) == 0:
+                return self._get_default_missing_info("Geen transcript aangeleverd")
+
             messages = self.initial_analysis_prompt.format_messages(transcript=transcript)
             response = self.llm.invoke(messages)
             
-            content = response.content
+            content = response.content.strip()
             logger.info(f"Initial analysis response: {content}")
             
-            # Parse JSON response
+            # If no proper JSON response, return default structure
+            if not content or not content.startswith("{"):
+                return self._get_default_missing_info("Kon analyse niet uitvoeren")
+
             try:
-                # Clean the response if it contains markdown code blocks
+                # Remove any markdown formatting if present
                 if "```json" in content:
-                    content = content.split("```json")[1].split("```")[0]
+                    content = content.split("```json")[1].split("```")[0].strip()
                 elif "```" in content:
-                    content = content.split("```")[1]
+                    content = content.split("```")[1].strip()
                 
-                return json.loads(content)
-            except json.JSONDecodeError:
-                logger.error("Failed to parse JSON response")
-                return {
-                    "missing_info": {
-                        "leningdeel": ["Kon leningdeel informatie niet analyseren"],
-                        "werkloosheid": ["Kon werkloosheid informatie niet analyseren"],
-                        "aow": ["Kon AOW informatie niet analyseren"]
-                    }
-                }
+                result = json.loads(content)
+                if not isinstance(result, dict) or "missing_info" not in result:
+                    return self._get_default_missing_info("Incorrect response format")
+                
+                return result
+
+            except json.JSONDecodeError as e:
+                logger.error(f"JSON parse error: {str(e)}")
+                return self._get_default_missing_info("Kon JSON niet verwerken")
             
         except Exception as e:
             logger.error(f"Error in initial transcript analysis: {str(e)}")
-            return {
-                "missing_info": {
-                    "leningdeel": ["Error analyzing leningdeel information"],
-                    "werkloosheid": ["Error analyzing werkloosheid information"],
-                    "aow": ["Error analyzing AOW information"]
-                }
+            return self._get_default_missing_info(f"Analyse error: {str(e)}")
+
+    def _get_default_missing_info(self, error_msg: str) -> Dict[str, Any]:
+        """Returns a default structure for missing information."""
+        return {
+            "missing_info": {
+                "leningdeel": [
+                    "leningbedrag",
+                    "NHG keuze",
+                    "rentevaste periode",
+                    "hypotheekvorm"
+                ],
+                "werkloosheid": [
+                    "huidige arbeidssituatie",
+                    "werkloosheidsrisico",
+                    "gewenste dekking"
+                ],
+                "aow": [
+                    "pensioenleeftijd",
+                    "pensioenwensen",
+                    "vermogensopbouw"
+                ]
             }
+        }
 
     def analyze_transcript(
         self,
@@ -110,6 +152,9 @@ class GPTService:
     ) -> Dict[str, str]:
         """Analyzes the transcript and additional information to generate advice."""
         try:
+            if not transcript or len(transcript.strip()) == 0:
+                return self._get_default_analysis_response("Geen transcript aangeleverd")
+
             # Format additional info if available
             additional_info = ""
             if app_state and app_state.additional_info:
@@ -128,7 +173,7 @@ class GPTService:
             content = response.content
             logger.info(f"Raw LLM response: {content}")
             
-            # Parse sections using dictionary comprehension
+            # Parse sections
             sections = {
                 "adviesmotivatie_leningdeel": "",
                 "adviesmotivatie_werkloosheid": "",
@@ -145,13 +190,21 @@ class GPTService:
                 elif current_section and current_section in sections:
                     sections[current_section] += line + '\n'
             
-            # Clean up sections
-            return {k: v.strip() for k, v in sections.items() if v.strip()}
+            # Verify all sections have content
+            result = {k: v.strip() for k, v in sections.items() if v.strip()}
+            if len(result) != 3:  # All three sections should have content
+                return self._get_default_analysis_response("Incomplete analyse")
+                
+            return result
             
         except Exception as e:
             logger.error(f"Error analyzing transcript: {str(e)}")
-            return {
-                "adviesmotivatie_leningdeel": "Er is een fout opgetreden bij de analyse.",
-                "adviesmotivatie_werkloosheid": "Er is een fout opgetreden bij de analyse.",
-                "adviesmotivatie_aow": "Er is een fout opgetreden bij de analyse."
-            }
+            return self._get_default_analysis_response(f"Error: {str(e)}")
+
+    def _get_default_analysis_response(self, error_msg: str) -> Dict[str, str]:
+        """Returns a default analysis response."""
+        return {
+            "adviesmotivatie_leningdeel": f"Er is een fout opgetreden bij de analyse: {error_msg}",
+            "adviesmotivatie_werkloosheid": f"Er is een fout opgetreden bij de analyse: {error_msg}",
+            "adviesmotivatie_aow": f"Er is een fout opgetreden bij de analyse: {error_msg}"
+        }
