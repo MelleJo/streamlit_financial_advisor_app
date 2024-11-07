@@ -14,3 +14,4 @@ langchain-openai
 langchain-core
 aiohttp
 typing-extensions
+groq
