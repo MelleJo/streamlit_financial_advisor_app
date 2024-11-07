@@ -12,3 +12,5 @@ streamlit-option-menu
 python-docx
 langchain-openai
 langchain-core
+aiohttp
+typing-extensions

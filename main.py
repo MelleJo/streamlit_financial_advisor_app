@@ -1,4 +1,5 @@
 import streamlit as st
+import asyncio
 from gpt_service import GPTService
 from audio_service import AudioService
 from transcription_service import TranscriptionService
@@ -27,13 +28,13 @@ def initialize_services():
         'conversation_service': ConversationService(api_key=api_key)
     }
 
-def process_input(transcript, services, app_state):
+async def process_input(transcript, services, app_state):
     """Process initial input and start conversation if needed"""
     if transcript:
         app_state.set_transcript(transcript)
         
         # Analyze transcript for missing information
-        analysis = services['conversation_service'].analyze_initial_transcript(transcript)
+        analysis = await services['conversation_service'].analyze_initial_transcript(transcript)
         
         if analysis:
             app_state.set_missing_info(analysis.get('missing_info', {}))
@@ -65,7 +66,7 @@ def render_input_section(services, app_state):
             with st.spinner("Audio wordt verwerkt..."):
                 transcript = services['transcription_service'].transcribe(audio_bytes)
                 if transcript:
-                    process_input(transcript, services, app_state)
+                    asyncio.run(process_input(transcript, services, app_state))
 
     with tab2:
         st.write("Upload een audio- of tekstbestand")
@@ -80,7 +81,7 @@ def render_input_section(services, app_state):
                 else:
                     transcript = uploaded_file.getvalue().decode("utf-8")
                 if transcript:
-                    process_input(transcript, services, app_state)
+                    asyncio.run(process_input(transcript, services, app_state))
 
     with tab3:
         st.write("Voer de tekst direct in")
@@ -90,7 +91,7 @@ def render_input_section(services, app_state):
             placeholder="Voer hier het transcript van uw adviesgesprek in..."
         )
         if st.button("Analyseer", use_container_width=True):
-            process_input(transcript, services, app_state)
+            asyncio.run(process_input(transcript, services, app_state))
 
 def main():
     st.title("AI Hypotheek Assistent 🏠")
@@ -131,7 +132,7 @@ def main():
     
     # Version info in footer
     st.markdown("---")
-    st.markdown("*AI Hypotheek Assistent - v0.0.3*")
+    st.markdown("*AI Hypotheek Assistent - v0.0.4*")
 
 if __name__ == "__main__":
     main()

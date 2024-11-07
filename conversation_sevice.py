@@ -1,62 +1,66 @@
 import streamlit as st
-from langchain_community.chat_models import ChatOpenAI  # Updated import
-from langchain_core.prompts import PromptTemplate  # Updated import
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 import logging
 import json
+from typing import Dict, Any
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+DEFAULT_RESPONSE = {
+    "complete_info": {"leningdeel": {}, "werkloosheid": {}, "aow": {}},
+    "missing_info": {
+        "leningdeel": ["Basisinformatie ontbreekt"],
+        "werkloosheid": ["Basisinformatie ontbreekt"],
+        "aow": ["Basisinformatie ontbreekt"]
+    },
+    "next_question": "Kunt u mij vertellen wat het gewenste leningbedrag is?",
+    "context": "We beginnen met de basisinformatie voor uw hypotheekaanvraag."
+}
+
 class ConversationService:
-    def __init__(self, api_key):
+    def __init__(self, api_key: str):
         self.llm = ChatOpenAI(
-            model="gpt-4o",  # Updated parameter name
+            model="gpt-4o",
             temperature=0.3,
             openai_api_key=api_key
         )
         
-        # Add JSON output parser
-        self.json_parser = JsonOutputParser()
+        # Initialize output parser
+        self.output_parser = JsonOutputParser()
         
-        # Analysis prompt
-        self.analysis_prompt = PromptTemplate(
-            input_variables=["transcript"],
-            template="""
-            Analyseer het volgende transcript van een hypotheekgesprek en identificeer ontbrekende informatie 
-            voor de volgende categorieën:
+        # Analysis prompt template
+        self.analysis_prompt = ChatPromptTemplate.from_messages([
+            ("system", "Je bent een hypotheekadviseur die transcripten analyseert. Geef je antwoord altijd in JSON format."),
+            ("user", """
+            Analyseer het volgende transcript en identificeer ontbrekende informatie:
 
-            1. Leningdeel (bedrag, NHG, aflosvorm, looptijd, rentevaste periode)
-            2. Werkloosheidsrisico (behoefte aan verzekering, gewenste dekking)
-            3. AOW-planning (pensioendatum, gewenste situatie)
+            Transcript: {transcript}
 
-            Transcript:
-            {transcript}
-
-            Retourneer je antwoord in het volgende JSON-formaat:
-            {{
-                "complete_info": {{
-                    "leningdeel": {{}},
-                    "werkloosheid": {{}},
-                    "aow": {{}}
-                }},
-                "missing_info": {{
+            Geef je antwoord in exact dit JSON format:
+            {
+                "complete_info": {
+                    "leningdeel": {},
+                    "werkloosheid": {},
+                    "aow": {}
+                },
+                "missing_info": {
                     "leningdeel": [],
                     "werkloosheid": [],
                     "aow": []
-                }},
-                "next_question": "eerste vraag die gesteld moet worden",
-                "context": "uitleg waarom deze vraag belangrijk is"
-            }}
-            """
-        )
+                },
+                "next_question": "vraag hier",
+                "context": "context hier"
+            }
+            """)
+        ])
         
-        # Conversation prompt
-        self.conversation_prompt = PromptTemplate(
-            input_variables=["conversation_history", "user_response", "missing_info"],
-            template="""
-            Je bent een vriendelijke hypotheekadviseur die ontbrekende informatie verzamelt.
-
+        # Conversation prompt template
+        self.conversation_prompt = ChatPromptTemplate.from_messages([
+            ("system", "Je bent een vriendelijke hypotheekadviseur die ontbrekende informatie verzamelt."),
+            ("user", """
             Gespreksgeschiedenis:
             {conversation_history}
 
@@ -66,61 +70,47 @@ class ConversationService:
             Nog ontbrekende informatie:
             {missing_info}
 
-            Bepaal de volgende vraag op basis van het antwoord en de nog ontbrekende informatie.
-            Retourneer je antwoord in het volgende JSON-formaat:
-            {{
-                "next_question": "volgende vraag",
-                "context": "uitleg waarom deze vraag belangrijk is",
-                "processed_info": {{}},
-                "remaining_missing_info": []
-            }}
-            """
-        )
-        
-        # Create modern chain configurations using pipe syntax
-        self.analysis_chain = (
-            {"transcript": lambda x: x}
-            | self.analysis_prompt 
-            | self.llm
-            | self.json_parser
-        )
-
-        self.conversation_chain = (
+            Geef je antwoord in exact dit JSON format:
             {
-                "conversation_history": lambda x: x["conversation_history"],
-                "user_response": lambda x: x["user_response"],
-                "missing_info": lambda x: x["missing_info"]
+                "next_question": "vraag hier",
+                "context": "context hier",
+                "processed_info": {},
+                "remaining_missing_info": []
             }
-            | self.conversation_prompt 
-            | self.llm
-            | self.json_parser
-        )
+            """)
+        ])
 
-    def analyze_initial_transcript(self, transcript):
+        # Create chains using modern syntax
+        self.analysis_chain = self.analysis_prompt | self.llm | self.output_parser
+        self.conversation_chain = self.conversation_prompt | self.llm | self.output_parser
+
+    async def analyze_initial_transcript(self, transcript: str) -> Dict[str, Any]:
+        """Analyzes the initial transcript and returns structured information."""
         try:
-            return self.analysis_chain.invoke(transcript)
+            response = await self.analysis_chain.ainvoke({"transcript": transcript})
+            logger.info("Successfully analyzed transcript")
+            return response
         except Exception as e:
-            logger.error(f"Error analyzing transcript: {str(e)}")
-            return {
-                "complete_info": {"leningdeel": {}, "werkloosheid": {}, "aow": {}},
-                "missing_info": {
-                    "leningdeel": ["Basisinformatie ontbreekt"],
-                    "werkloosheid": ["Basisinformatie ontbreekt"],
-                    "aow": ["Basisinformatie ontbreekt"]
-                },
-                "next_question": "Kunt u mij vertellen wat het gewenste leningbedrag is?",
-                "context": "We beginnen met de basisinformatie voor uw hypotheekaanvraag."
-            }
+            logger.error(f"Error analyzing transcript: {e}")
+            return DEFAULT_RESPONSE
 
-    def process_user_response(self, conversation_history, user_response, missing_info):
+    async def process_user_response(
+        self, 
+        conversation_history: str, 
+        user_response: str, 
+        missing_info: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Processes user response and returns next interaction details."""
         try:
-            return self.conversation_chain.invoke({
+            response = await self.conversation_chain.ainvoke({
                 "conversation_history": conversation_history,
                 "user_response": user_response,
                 "missing_info": json.dumps(missing_info, ensure_ascii=False)
             })
+            logger.info("Successfully processed user response")
+            return response
         except Exception as e:
-            logger.error(f"Error processing response: {str(e)}")
+            logger.error(f"Error processing response: {e}")
             return {
                 "next_question": "Kunt u dat nog eens anders formuleren?",
                 "context": "Ik begreep uw antwoord niet helemaal.",
@@ -128,7 +118,9 @@ class ConversationService:
                 "remaining_missing_info": missing_info
             }
 
-    def format_conversation_history(self, messages):
+    @staticmethod
+    def format_conversation_history(messages: list) -> str:
+        """Formats the conversation history into a string."""
         return "\n".join([
             f"{'AI: ' if msg['is_ai'] else 'Klant: '}{msg['content']}"
             for msg in messages
