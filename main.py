@@ -1,5 +1,4 @@
 import streamlit as st
-import asyncio
 from gpt_service import GPTService
 from audio_service import AudioService
 from transcription_service import TranscriptionService
@@ -28,31 +27,32 @@ def initialize_services():
         'conversation_service': ConversationService(api_key=api_key)
     }
 
-async def process_input(transcript, services, app_state):
+def process_input(transcript, services, app_state):
     """Process initial input and start conversation if needed"""
     if transcript:
         app_state.set_transcript(transcript)
         
-        # Analyze transcript for missing information
-        analysis = await services['conversation_service'].analyze_initial_transcript(transcript)
-        
-        if analysis:
-            app_state.set_missing_info(analysis.get('missing_info', {}))
+        with st.spinner("Transcript wordt geanalyseerd..."):
+            # Analyze transcript for missing information
+            analysis = services['conversation_service'].analyze_initial_transcript(transcript)
             
-            # Add initial AI message if there's a next question
-            if analysis.get('next_question'):
-                context = analysis.get('context', '')
-                message = f"{analysis['next_question']}\n\n{context if context else ''}"
-                app_state.add_message(message, is_ai=True)
+            if analysis:
+                app_state.set_missing_info(analysis.get('missing_info', {}))
+                
+                # Add initial AI message if there's a next question
+                if analysis.get('next_question'):
+                    context = analysis.get('context', '')
+                    message = f"{analysis['next_question']}\n\n{context if context else ''}"
+                    app_state.add_message(message, is_ai=True)
+                
+                # If no missing information, proceed to results
+                if not any(analysis['missing_info'].values()):
+                    app_state.set_analysis_complete(True)
+                    app_state.set_step("results")
+                else:
+                    app_state.set_step("conversation")
             
-            # If no missing information, proceed to results
-            if not any(analysis['missing_info'].values()):
-                app_state.set_analysis_complete(True)
-                app_state.set_step("results")
-            else:
-                app_state.set_step("conversation")
-        
-        st.rerun()
+            st.rerun()
 
 def render_input_section(services, app_state):
     st.title("Hypotheekadvies Invoer")
@@ -66,7 +66,7 @@ def render_input_section(services, app_state):
             with st.spinner("Audio wordt verwerkt..."):
                 transcript = services['transcription_service'].transcribe(audio_bytes)
                 if transcript:
-                    asyncio.run(process_input(transcript, services, app_state))
+                    process_input(transcript, services, app_state)
 
     with tab2:
         st.write("Upload een audio- of tekstbestand")
@@ -81,7 +81,7 @@ def render_input_section(services, app_state):
                 else:
                     transcript = uploaded_file.getvalue().decode("utf-8")
                 if transcript:
-                    asyncio.run(process_input(transcript, services, app_state))
+                    process_input(transcript, services, app_state)
 
     with tab3:
         st.write("Voer de tekst direct in")
@@ -91,7 +91,7 @@ def render_input_section(services, app_state):
             placeholder="Voer hier het transcript van uw adviesgesprek in..."
         )
         if st.button("Analyseer", use_container_width=True):
-            asyncio.run(process_input(transcript, services, app_state))
+            process_input(transcript, services, app_state)
 
 def main():
     st.title("AI Hypotheek Assistent 🏠")
