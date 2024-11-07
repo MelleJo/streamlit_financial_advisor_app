@@ -2,7 +2,7 @@ import streamlit as st
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from docx import Document
+from docx import Document  # This will be handled by adding python-docx to requirements.txt
 from io import BytesIO
 import logging
 import re
@@ -185,6 +185,33 @@ def apply_custom_css():
         color: #1f2937;
         font-size: 1rem;
         letter-spacing: 0.01em;
+    }
+
+    /* Chat interface styling */
+    .stChatMessage {
+        background-color: transparent !important;
+        border: none !important;
+        padding: 0 !important;
+    }
+    
+    .stChatInput {
+        border-radius: 20px !important;
+        border: 2px solid #E8F0FE !important;
+        padding: 10px 20px !important;
+        margin-top: 20px !important;
+    }
+    
+    .stChatInput:focus {
+        border-color: #1a73e8 !important;
+        box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2) !important;
+    }
+    
+    .chat-container {
+        background-color: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        margin: 20px 0;
+        padding: 20px;
     }
     </style>
     """, unsafe_allow_html=True)
