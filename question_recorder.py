@@ -3,130 +3,145 @@ from streamlit_mic_recorder import mic_recorder
 from typing import List, Dict, Any, Callable
 from transcription_service import TranscriptionService
 
+QUESTIONS = [
+    {
+        "question": "Wat is het gewenste leningbedrag van uw cliënt?",
+        "context": "Noteer het bedrag dat de cliënt wil lenen voor de hypotheek.",
+        "category": "leningdeel"
+    },
+    {
+        "question": "Heeft uw cliënt interesse in NHG (Nationale Hypotheek Garantie)?",
+        "context": "Bespreek of de cliënt gebruik wil maken van NHG en waarom.",
+        "category": "leningdeel"
+    },
+    {
+        "question": "Welke hypotheekvorm heeft uw cliënt gekozen?",
+        "context": "Annuïteit, lineair of een andere vorm - inclusief motivatie.",
+        "category": "leningdeel"
+    },
+    {
+        "question": "Welke rentevaste periode wenst uw cliënt?",
+        "context": "Bespreek de gekozen periode en de overwegingen daarbij.",
+        "category": "leningdeel"
+    },
+    {
+        "question": "Wat is de arbeidssituatie van uw cliënt en hoe kijkt deze aan tegen werkloosheidsrisico's?",
+        "context": "Huidige arbeidscontract, sector, en risico-inschatting.",
+        "category": "werkloosheid"
+    },
+    {
+        "question": "Wat zijn de wensen van uw cliënt voor de hypotheek na pensionering?",
+        "context": "Bespreek de AOW-leeftijd, pensioenopbouw en gewenste situatie.",
+        "category": "aow"
+    }
+]
+
 def render_question_recorder(
-    questions: List[Dict[str, str]],
     transcription_service: TranscriptionService,
-    on_complete: Callable[[Dict[int, Dict[str, str]]], None],
+    on_complete: Callable[[Dict[str, str]], None],
     on_skip: Callable[[], None]
 ):
-    """Renders the question recording interface with audio recording and transcription."""
+    """Renders an interface for recording answers to all questions at once."""
     
-    if 'current_question_index' not in st.session_state:
-        st.session_state.current_question_index = 0
-    if 'answers' not in st.session_state:
-        st.session_state.answers = {}
-    if 'recording_state' not in st.session_state:
-        st.session_state.recording_state = 'ready'
-
     st.markdown("""
         <style>
-        .question-container {
-            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-            border-radius: 15px;
+        .question-list {
+            background: white;
             padding: 2rem;
-            margin: 1rem 0;
+            border-radius: 15px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-            border: 1px solid rgba(226, 232, 240, 0.8);
+            margin-bottom: 2rem;
         }
-        .question-header {
+        .question-item {
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            transition: all 0.2s ease;
+        }
+        .question-item:hover {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            transform: translateY(-2px);
+        }
+        .question-number {
             color: #1a73e8;
-            font-size: 1.1rem;
+            font-size: 0.9rem;
             font-weight: 600;
-            margin-bottom: 1rem;
+            margin-bottom: 0.5rem;
         }
         .question-text {
             color: #1f2937;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             font-weight: 500;
-            margin-bottom: 1.5rem;
+            margin-bottom: 0.5rem;
         }
         .question-context {
             color: #6b7280;
-            font-size: 0.95rem;
-            margin-bottom: 1rem;
+            font-size: 0.9rem;
             font-style: italic;
         }
-        .progress-bar {
-            margin: 2rem 0;
-            padding: 1rem;
-            background: #f1f5f9;
-            border-radius: 10px;
-        }
         .recording-section {
-            margin-top: 2rem;
-            padding: 1rem;
             background: #f8fafc;
             border-radius: 10px;
+            padding: 1.5rem;
+            margin-top: 1rem;
         }
         </style>
     """, unsafe_allow_html=True)
 
-    # Progress bar
-    progress = st.session_state.current_question_index / len(questions)
-    st.progress(progress, "Voortgang")
+    st.markdown("### 📝 Adviesnotities opnemen")
+    st.markdown("""
+        Hieronder ziet u alle onderwerpen die aan bod moeten komen in uw advies. 
+        U kunt uw complete adviesnotitie in één keer opnemen.
+    """)
 
-    # Current question
-    if st.session_state.current_question_index < len(questions):
-        current_question = questions[st.session_state.current_question_index]
-        
+    # Display all questions
+    st.markdown('<div class="question-list">', unsafe_allow_html=True)
+    for i, q in enumerate(QUESTIONS, 1):
         st.markdown(f"""
-            <div class="question-container">
-                <div class="question-header">Vraag {st.session_state.current_question_index + 1} van {len(questions)}</div>
-                <div class="question-text">{current_question['question']}</div>
-                <div class="question-context">{current_question.get('context', '')}</div>
+            <div class="question-item">
+                <div class="question-number">Onderwerp {i}</div>
+                <div class="question-text">{q['question']}</div>
+                <div class="question-context">{q['context']}</div>
             </div>
         """, unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
-        # Recording interface
-        st.markdown('<div class="recording-section">', unsafe_allow_html=True)
-        col1, col2, col3 = st.columns([3, 2, 2])
-        
-        with col1:
-            audio = mic_recorder(
-                start_prompt="🎙️ Start Opname",
-                stop_prompt="⏹️ Stop Opname",
-                key=f"recorder_{st.session_state.current_question_index}"
+    # Recording section
+    st.markdown('<div class="recording-section">', unsafe_allow_html=True)
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        st.markdown("#### 🎙️ Neem uw adviesnotitie op")
+        audio = mic_recorder(
+            start_prompt="Start Opname",
+            stop_prompt="Stop Opname",
+            key="full_recording"
+        )
+
+    with col2:
+        if st.button("🏁 Sla opname over", use_container_width=True, type="secondary"):
+            on_skip()
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    if audio:
+        with st.spinner("Uw opname wordt verwerkt..."):
+            # Create a prompt that includes all questions
+            context_prompt = "Hypotheekadvies notitie met de volgende onderwerpen: " + \
+                           "; ".join(q['question'] for q in QUESTIONS)
+            
+            transcript = transcription_service.transcribe(
+                audio['bytes'],
+                mode="accurate",
+                prompt=context_prompt
             )
-
-        with col2:
-            if st.button("⏭️ Sla deze vraag over", use_container_width=True):
-                st.session_state.current_question_index += 1
-                if st.session_state.current_question_index >= len(questions):
-                    on_complete(st.session_state.answers)
+            
+            if transcript:
+                result = {
+                    "full_recording": transcript,
+                    "questions": QUESTIONS
+                }
+                on_complete(result)
                 st.rerun()
-
-        with col3:
-            if st.button("🏁 Beëindig opname", use_container_width=True, type="primary"):
-                on_skip()
-
-        st.markdown('</div>', unsafe_allow_html=True)
-
-        if audio and st.session_state.recording_state != 'processing':
-            st.session_state.recording_state = 'processing'
-            with st.spinner("Audio wordt verwerkt..."):
-                transcript = transcription_service.transcribe(
-                    audio['bytes'],
-                    mode="accurate",
-                    prompt=current_question['question']
-                )
-                
-                if transcript:
-                    st.session_state.answers[st.session_state.current_question_index] = {
-                        'question': current_question['question'],
-                        'answer': transcript
-                    }
-                    st.session_state.current_question_index += 1
-                    st.session_state.recording_state = 'ready'
-                    
-                    if st.session_state.current_question_index >= len(questions):
-                        on_complete(st.session_state.answers)
-                    st.rerun()
-
-        # Show recorded answers
-        if st.session_state.answers:
-            with st.expander("📝 Bekijk gegeven antwoorden"):
-                for idx, answer in st.session_state.answers.items():
-                    st.markdown(f"""
-                        **Vraag {idx + 1}:** {answer['question']}  
-                        *Antwoord:* {answer['answer']}
-                    """)
