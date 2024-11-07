@@ -1,28 +1,18 @@
 """
 File: ui_components.py
 Provides all UI components and styling for the AI Hypotheek Assistent.
-This module handles the complete user interface of the application, including:
-- Custom CSS styling and theme configuration
-- Progress bar and step navigation
-- Input methods (manual, file upload, audio recording)
-- Results display with interactive mortgage term definitions
-- Feedback collection and email functionality
-- Document export capabilities
-- Person selection and details forms
-The module ensures a consistent, professional look and feel throughout the application
-while providing interactive elements for better user engagement.
 """
 
 import streamlit as st
 import smtplib
+import json
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from docx import Document  # This will be handled by adding python-docx to requirements.txt
+from docx import Document
 from io import BytesIO
 import logging
 import re
 from definitions import MORTGAGE_DEFINITIONS, improve_explanation
-
 
 # Configure logging
 logging.basicConfig(filename='app.log', level=logging.INFO, 
@@ -32,91 +22,7 @@ logger = logging.getLogger(__name__)
 def apply_custom_css():
     st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
-    
-    html, body, [class*="css"] {
-        font-family: 'Inter', sans-serif;
-    }
-    
-    .main {
-        background-color: #f8fafc;
-    }
-    
-    .stApp {
-        max-width: none;
-    }
-    
-    h1 {
-        color: #1e293b;
-        font-weight: 700;
-    }
-    
-    h2, h3 {
-        color: #334155;
-        font-weight: 600;
-    }
-    
-    .stButton > button {
-        background-color: #E8F0FE !important;
-        color: #1a73e8 !important;
-        border: 1px solid #d2e3fc !important;
-        padding: 2px 8px !important;
-        border-radius: 4px !important;
-        font-weight: 500 !important;
-        margin: 0 2px !important;
-        min-width: 0 !important;
-        height: auto !important;
-        line-height: normal !important;
-        white-space: nowrap !important;
-    }
-    
-    .stTextInput>div>div>input, .stTextArea>div>div>textarea {
-        border-radius: 6px;
-    }
-    
-    .result-card {
-        background-color: #ffffff;
-        border-radius: 10px;
-        padding: 1.5rem;
-        margin-bottom: 1rem;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    }
-    
-    .stProgress > div > div > div > div {
-        background-color: #3b82f6;
-    }
-
-    .section-title {
-        font-size: 1.2em;
-        font-weight: bold;
-        margin-top: 1em;
-        margin-bottom: 0.5em;
-        background-color: #e2e8f0;
-        padding: 0.5em;
-        border-radius: 6px;
-    }
-
-    .result-title {
-        font-weight: bold;
-        margin-top: 0.5em;
-    }
-
-    .feedback-card {
-        background-color: #f1f5f9;
-        border-radius: 10px;
-        padding: 1.5rem;
-        margin-top: 2rem;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    }
-
-    .feedback-title {
-        font-size: 1.2em;
-        font-weight: bold;
-        margin-bottom: 1em;
-        color: #3b82f6;
-    }
-
-    /* Term highlighting and interaction */
+    /* Your existing CSS styles */
     .term-highlight {
         background: linear-gradient(120deg, #E8F0FE 0%, #d2e3fc 100%);
         border-radius: 4px;
@@ -137,39 +43,14 @@ def apply_custom_css():
         transform: translateY(-1px);
     }
     
-    .term-highlight:active {
-        transform: translateY(0);
-        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-    }
-
-    /* Explanation card styling */
     .explanation-card {
         background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
         padding: 1.25rem;
         border-radius: 12px;
         border: 1px solid rgba(226, 232, 240, 0.8);
         margin-bottom: 1rem;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05),
-                    0 10px 15px rgba(0, 0, 0, 0.025);
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
         animation: slideIn 0.3s ease-out;
-    }
-
-    @keyframes slideIn {
-        from {
-            opacity: 0;
-            transform: translateY(10px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    .explanation-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 8px rgba(0, 0, 0, 0.08),
-                    0 12px 18px rgba(0, 0, 0, 0.04);
     }
 
     .explanation-title {
@@ -177,7 +58,6 @@ def apply_custom_css():
         margin-bottom: 0.75rem;
         font-size: 1.1rem;
         font-weight: 600;
-        letter-spacing: -0.01em;
         border-bottom: 2px solid rgba(26, 115, 232, 0.1);
         padding-bottom: 0.5rem;
     }
@@ -186,7 +66,6 @@ def apply_custom_css():
         color: #374151;
         font-size: 0.95rem;
         line-height: 1.7;
-        letter-spacing: 0.01em;
     }
 
     .text-paragraph {
@@ -194,192 +73,9 @@ def apply_custom_css():
         margin-bottom: 1.25em;
         color: #1f2937;
         font-size: 1rem;
-        letter-spacing: 0.01em;
-    }
-
-    /* Chat interface styling */
-    .stChatMessage {
-        background-color: transparent !important;
-        border: none !important;
-        padding: 0 !important;
-    }
-    
-    .stChatInput {
-        border-radius: 20px !important;
-        border: 2px solid #E8F0FE !important;
-        padding: 10px 20px !important;
-        margin-top: 20px !important;
-    }
-    
-    .stChatInput:focus {
-        border-color: #1a73e8 !important;
-        box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2) !important;
-    }
-    
-    .chat-container {
-        background-color: white;
-        border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-        margin: 20px 0;
-        padding: 20px;
-    }
-    
-    /* Additional utility classes */
-    .hidden {
-        display: none !important;
-    }
-    
-    .flex {
-        display: flex !important;
-    }
-    
-    .flex-col {
-        flex-direction: column !important;
-    }
-    
-    .items-center {
-        align-items: center !important;
-    }
-    
-    .justify-between {
-        justify-content: space-between !important;
-    }
-    
-    .gap-4 {
-        gap: 1rem !important;
-    }
-    
-    .rounded-full {
-        border-radius: 9999px !important;
-    }
-    
-    .transition-all {
-        transition: all 0.2s ease !important;
-    }
-
-    /* Override Streamlit's default styling for better visual hierarchy */
-    .block-container {
-        padding-top: 2rem !important;
-        padding-bottom: 2rem !important;
-    }
-
-    .element-container {
-        margin-bottom: 1rem !important;
-    }
-
-    /* Make the interface more compact on smaller screens */
-    @media screen and (max-width: 768px) {
-        .block-container {
-            padding: 1rem !important;
-        }
-
-        .explanation-card {
-            padding: 1rem;
-        }
-
-        .text-paragraph {
-            font-size: 0.9rem;
-        }
     }
     </style>
     """, unsafe_allow_html=True)
-
-def render_progress_bar(app_state):
-    steps = {
-        "select_persons": "Personen",
-        "person_details": "Gegevens",
-        "choose_method": "Methode",
-        "upload": "Invoer",
-        "results": "Resultaten"
-    }
-    current_step = app_state.step
-    step_list = list(steps.keys())
-    current_step_index = step_list.index(current_step)
-    progress = (current_step_index + 1) / len(steps)
-    
-    st.progress(progress)
-    cols = st.columns(len(steps))
-    for i, (step, label) in enumerate(steps.items()):
-        with cols[i]:
-            if step_list.index(step) < current_step_index:
-                st.markdown(f"✅ {label}")
-            elif step == current_step:
-                st.markdown(f"**🔵 {label}**")
-            else:
-                st.markdown(f"⚪ {label}")
-
-def render_choose_method(app_state):
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        if st.button("📝 Handmatige invoer", use_container_width=True):
-            app_state.set_upload_method("manual")
-            app_state.set_step("upload")
-    with col2:
-        if st.button("📁 Bestand uploaden", use_container_width=True):
-            app_state.set_upload_method("file")
-            app_state.set_step("upload")
-    with col3:
-        if st.button("🎙️ Audio opnemen", use_container_width=True):
-            app_state.set_upload_method("audio")
-            app_state.set_step("upload")
-
-def render_upload(app_state, services):
-    st.title("Transcript Invoer")
-    transcript = None
-
-    if app_state.upload_method == "manual":
-        transcript = st.text_area("Voer het transcript in:", height=300)
-        if st.button("Analyseer", use_container_width=True):
-            process_transcript(transcript, services['gpt_service'], app_state)
-
-    elif app_state.upload_method == "file":
-        uploaded_file = st.file_uploader("Kies een bestand", type=["txt", "docx", "wav", "mp3", "m4a"])
-        if uploaded_file:
-            logger.info(f"Uploaded file: {uploaded_file.name}, Type: {uploaded_file.type}, Size: {uploaded_file.size} bytes")
-            
-            with st.spinner("Bestand wordt verwerkt..."):
-                if uploaded_file.type.startswith('audio') or uploaded_file.name.lower().endswith(('.wav', '.mp3', '.m4a')):
-                    transcript = services['transcription_service'].transcribe(uploaded_file)
-                else:
-                    transcript = uploaded_file.getvalue().decode("utf-8")
-            
-            if transcript:
-                st.text_area("Transcript (bewerk indien nodig):", value=transcript, height=300, key="editable_transcript")
-                if st.button("Analyseer", use_container_width=True):
-                    process_transcript(st.session_state.editable_transcript, services['gpt_service'], app_state)
-            else:
-                st.error("Er is een fout opgetreden bij het verwerken van het bestand.")
-
-    else:  # audio recording
-        audio_bytes = services['audio_service'].record_audio()
-        
-        if audio_bytes:
-            with st.spinner("Audio wordt getranscribeerd..."):
-                transcript = services['transcription_service'].transcribe(audio_bytes)
-            
-            if transcript:
-                st.text_area("Transcript (bewerk indien nodig):", value=transcript, height=300, key="editable_transcript")
-                if st.button("Analyseer", use_container_width=True):
-                    process_transcript(st.session_state.editable_transcript, services['gpt_service'], app_state)
-            else:
-                st.error("Er is een fout opgetreden bij het transcriberen van de audio.")
-
-def process_transcript(transcript, gpt_service, app_state):
-    if transcript:
-        with st.spinner("Bezig met analyseren..."):
-            logger.info("Starting transcript analysis")
-            result = gpt_service.analyze_transcript(transcript)
-            logger.info("Transcript analysis completed")
-        if result:
-            app_state.set_result(result)
-            app_state.set_transcript(transcript)
-            app_state.set_step("results")
-        else:
-            logger.error("Error occurred during transcript analysis")
-            st.error("Er is een fout opgetreden bij het analyseren van het transcript.")
-    else:
-        logger.warning("No transcript to analyze")
-        st.error("Er is geen transcript om te analyseren. Voer een transcript in, upload een bestand, of neem audio op.")
 
 def render_results(app_state):
     """Renders the analysis results with clickable terms and definitions."""
@@ -389,7 +85,7 @@ def render_results(app_state):
         st.warning("Er zijn geen resultaten beschikbaar.")
         return
     
-    # Initialize session state variables
+    # Initialize session state for term selection
     if 'selected_term' not in st.session_state:
         st.session_state.selected_term = None
     if 'selected_section' not in st.session_state:
@@ -397,6 +93,19 @@ def render_results(app_state):
     if 'enhanced_texts' not in st.session_state:
         st.session_state.enhanced_texts = {}
 
+    # Add JavaScript for term click handling
+    st.markdown("""
+        <script>
+        function handleTermClick(term, section) {
+            window.parent.postMessage({
+                type: 'streamlit:setComponentValue',
+                value: JSON.stringify({term: term, section: section})
+            }, '*');
+        }
+        </script>
+    """, unsafe_allow_html=True)
+
+    # Process each section
     for section, content in app_state.result.items():
         with st.expander(section.replace("_", " ").capitalize(), expanded=True):
             col1, col2 = st.columns([2, 1])
@@ -429,7 +138,8 @@ def render_results(app_state):
                         # Add highlighted term with click handler
                         term_html = f"""<span 
                             class="term-highlight" 
-                            onclick="Streamlit.setComponentValue('{term}')">{paragraph[start:end]}</span>"""
+                            onclick="handleTermClick('{term}', '{section}')"
+                            >{paragraph[start:end]}</span>"""
                         html_parts.append(term_html)
                         current_pos = end
                     
@@ -444,7 +154,7 @@ def render_results(app_state):
                     )
             
             with col2:
-                # Show definition if term is selected
+                # Show definition if term is selected for this section
                 if (st.session_state.selected_term and 
                     st.session_state.selected_section == section):
                     
@@ -478,6 +188,16 @@ def render_results(app_state):
                                 app_state.result[section] = enhanced_text
                                 st.rerun()
 
+    # Handle term selection from JavaScript
+    if 'streamlit_message' in st.session_state:
+        try:
+            data = json.loads(st.session_state.streamlit_message)
+            st.session_state.selected_term = data['term']
+            st.session_state.selected_section = data['section']
+            st.rerun()
+        except:
+            pass
+
     if st.button("Exporteer als Word-document", use_container_width=True):
         export_to_docx(app_state.result)
 
@@ -488,49 +208,6 @@ def render_results(app_state):
     with col2:
         if st.button("Nieuwe Analyse", use_container_width=True):
             app_state.reset()
-
-def send_feedback_email(user_name, feedback_type, feedback_text, app_state):
-    try:
-        if 'email' not in st.secrets:
-            st.error("Email configuration is missing in secrets. Please check your secrets.toml file.")
-            return
-
-        email_config = st.secrets.email
-
-        required_fields = ['username', 'password', 'smtp_server', 'smtp_port', 'receiving_email']
-        missing_fields = [field for field in required_fields if not hasattr(email_config, field)]
-        if missing_fields:
-            st.error(f"Missing email configuration fields: {', '.join(missing_fields)}.")
-            return
-
-        msg = MIMEMultipart()
-        msg['From'] = email_config.username
-        msg['To'] = email_config.receiving_email
-        msg['Subject'] = f"AI Hypotheek Assistent Feedback - {feedback_type}"
-
-        body = f"""
-        Naam van gebruiker: {user_name}
-        Type feedback: {feedback_type}
-        Feedback: {feedback_text}
-
-        Input (transcript):
-        {app_state.transcript}
-
-        Output:
-        {app_state.result}
-        """
-
-        msg.attach(MIMEText(body, 'plain'))
-
-        server = smtplib.SMTP(email_config.smtp_server, email_config.smtp_port)
-        server.starttls()
-        server.login(email_config.username, email_config.password)
-        text = msg.as_string()
-        server.sendmail(email_config.username, email_config.receiving_email, text)
-        server.quit()
-        st.success("Feedback successfully sent!")
-    except Exception as e:
-        st.error(f"Er is een fout opgetreden bij het verzenden van de feedback: {str(e)}")
 
 def export_to_docx(result):
     doc = Document()
@@ -554,211 +231,3 @@ def export_to_docx(result):
         file_name="analyse_resultaten.docx",
         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     )
-
-def render_person_selection(app_state):
-    st.title("Personen Selectie")
-    st.write("Selecteer het aantal personen voor het hypotheekadvies")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        number_of_persons = st.radio(
-            "Aantal personen",
-            options=[1, 2],
-            format_func=lambda x: f"{x} {'persoon' if x == 1 else 'personen'}"
-        )
-        
-        if st.button("Bevestig aantal personen", use_container_width=True):
-            app_state.set_number_of_persons(number_of_persons)
-            app_state.set_step("person_details")
-            
-    with col2:
-        st.info("""
-        💡 Tip: Selecteer het aantal personen dat betrokken is bij de hypotheekaanvraag. 
-        Dit helpt ons om een gepersonaliseerd advies te geven voor elk scenario.
-        """)
-
-def render_person_details(app_state):
-    st.title("Persoonlijke Gegevens")
-    st.write("Vul de gegevens in voor alle betrokken personen")
-    
-    all_filled = True
-    
-    for person_id, details in app_state.person_details.items():
-        person_number = person_id.split("_")[1]
-        with st.expander(f"Persoon {person_number}", expanded=True):
-            name = st.text_input(
-                "Naam",
-                key=f"{person_id}_name",
-                value=details.get("name", "")
-            )
-            
-            employment_status = st.selectbox(
-                "Arbeidssituatie",
-                options=["Loondienst", "Zelfstandig", "Werkloos", "Pensioen"],
-                key=f"{person_id}_employment",
-                index=None
-            )
-            
-            if employment_status in ["Loondienst", "Zelfstandig"]:
-                income = st.number_input(
-                    "Jaarinkomen",
-                    min_value=0,
-                    max_value=1000000,
-                    step=1000,
-                    key=f"{person_id}_income",
-                    format="%d"
-                )
-            else:
-                income = 0
-            
-            pension_status = st.selectbox(
-                "Pensioensituatie",
-                options=["Nog niet in pensioen", "Bijna in pensioen", "In pensioen"],
-                key=f"{person_id}_pension",
-                index=None
-            )
-            
-            app_state.set_person_detail(person_id, "name", name)
-            app_state.set_person_detail(person_id, "employment_status", employment_status)
-            app_state.set_person_detail(person_id, "pension_status", pension_status)
-            app_state.set_person_detail(person_id, "income", income)
-            
-            if not name or not employment_status or not pension_status:
-                all_filled = False
-    
-    if st.button("Ga door naar advies", use_container_width=True):
-        if all_filled:
-            app_state.set_step("choose_method")
-        else:
-            st.error("Vul alstublieft alle verplichte velden in voordat u doorgaat.")
-
-def clean_text_content(text):
-    """Clean and format text content."""
-    # Remove excessive whitespace
-    text = re.sub(r'\s+', ' ', text)
-    # Ensure proper sentence spacing
-    text = re.sub(r'([.!?])\s*', r'\1\n', text)
-    # Clean up bullet points
-    text = re.sub(r'\n\s*•\s*', '\n• ', text)
-    # Remove empty lines
-    text = '\n'.join(line for line in text.split('\n') if line.strip())
-    return text.strip()
-
-def format_text_with_definitions(text, section_key):
-    """Format text by highlighting defined terms and making them clickable."""
-    if not text:
-        return text
-    
-    # Initialize session state variables
-    if 'enhanced_texts' not in st.session_state:
-        st.session_state.enhanced_texts = {}
-    
-    if 'selected_term' not in st.session_state:
-        st.session_state.selected_term = None
-        
-    if 'selected_section' not in st.session_state:
-        st.session_state.selected_section = None
-    
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        # Process text paragraph by paragraph
-        for paragraph in text.split('\n'):
-            if not paragraph.strip():
-                continue
-            
-            html_parts = []
-            current_pos = 0
-            
-            # Find all mortgage terms in the paragraph
-            term_positions = []
-            for term in MORTGAGE_DEFINITIONS.keys():
-                pattern = r'\b' + re.escape(term) + r'\b'
-                for match in re.finditer(pattern, paragraph, re.IGNORECASE):
-                    term_positions.append((match.start(), match.end(), term))
-            
-            # Sort positions to handle overlapping terms
-            term_positions.sort()
-            
-            # Build HTML with highlighted terms
-            for start, end, term in term_positions:
-                # Add text before the term
-                if start > current_pos:
-                    html_parts.append(paragraph[current_pos:start])
-                
-                # Add highlighted term with click handler
-                term_html = f"""<span 
-                    class="term-highlight" 
-                    style="
-                        background: linear-gradient(120deg, #E8F0FE 0%, #d2e3fc 100%);
-                        border-radius: 4px;
-                        padding: 2px 6px;
-                        margin: 0 2px;
-                        cursor: pointer;
-                        display: inline-block;
-                        transition: all 0.2s ease;
-                        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-                    "
-                    onclick="handleTermClick('{term}')"
-                >{paragraph[start:end]}</span>"""
-                html_parts.append(term_html)
-                current_pos = end
-            
-            # Add remaining text
-            if current_pos < len(paragraph):
-                html_parts.append(paragraph[current_pos:])
-            
-            # Display the paragraph
-            st.markdown(
-                f'<div class="text-paragraph">{"".join(html_parts)}</div>',
-                unsafe_allow_html=True
-            )
-
-            # Add click handlers for terms
-            st.markdown("""
-                <script>
-                function handleTermClick(term) {
-                    // Use Streamlit's setComponentValue to update the selected term
-                    window.parent.postMessage({
-                        type: 'streamlit:setComponentValue',
-                        value: term
-                    }, '*');
-                }
-                </script>
-            """, unsafe_allow_html=True)
-    
-    with col2:
-        if (st.session_state.selected_term and 
-            st.session_state.selected_section == section_key):
-            
-            st.markdown(f"""
-                <div class="explanation-card">
-                    <div class="explanation-title">
-                        📚 {st.session_state.selected_term}
-                    </div>
-                    <div class="explanation-content">
-                        {MORTGAGE_DEFINITIONS[st.session_state.selected_term].replace('\n', '<br>')}
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
-            
-            if st.button(
-                "➕ Voeg uitleg toe", 
-                type="primary",
-                use_container_width=True,
-                key=f"add_{section_key}_{st.session_state.selected_term}"
-            ):
-                enhanced_text = improve_explanation(
-                    st.session_state.selected_term,
-                    MORTGAGE_DEFINITIONS[st.session_state.selected_term],
-                    text,
-                    st.session_state.openai_client
-                )
-                
-                if enhanced_text:
-                    st.session_state.enhanced_texts[section_key] = enhanced_text
-                    if hasattr(st.session_state, 'app_state'):
-                        if section_key in st.session_state.app_state.result:
-                            st.session_state.app_state.result[section_key] = enhanced_text
-                            st.rerun()
