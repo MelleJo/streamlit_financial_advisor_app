@@ -1,7 +1,7 @@
 import logging
-from langchain_openai import ChatOpenAI
-from langchain.prompts import PromptTemplate
-from langchain_core.runnables import RunnablePassthrough
+from langchain_community.chat_models import ChatOpenAI
+from langchain_core.prompts import PromptTemplate
+from langchain_core.output_parsers import StrOutputParser
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 class GPTService:
     def __init__(self, api_key):
         self.llm = ChatOpenAI(
-            model_name="gpt-4o",
+            model="gpt-4o",
             temperature=0.3,
             openai_api_key=api_key
         )
@@ -17,8 +17,16 @@ class GPTService:
             input_variables=["transcript", "conversation_history"],
             template=self._load_prompt()
         )
-        # Create a chain using the new method
-        self.chain = self.prompt | self.llm
+        # Create chain using modern syntax
+        self.chain = (
+            {
+                "transcript": lambda x: x["transcript"],
+                "conversation_history": lambda x: x["conversation_history"]
+            }
+            | self.prompt 
+            | self.llm 
+            | StrOutputParser()
+        )
 
     def _load_prompt(self):
         with open("prompt_template.txt", "r", encoding='utf-8') as file:
@@ -41,11 +49,8 @@ class GPTService:
                 "conversation_history": conversation_history
             })
             
-            # Extract the content from the result
-            content = result.content if hasattr(result, 'content') else str(result)
-            
             logger.info("Analysis complete!")
-            return self._parse_result(content)
+            return self._parse_result(result)
         except Exception as e:
             logger.error(f"Error during analysis: {str(e)}")
             return None

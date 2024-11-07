@@ -1,7 +1,7 @@
 import streamlit as st
-from langchain_openai import ChatOpenAI
-from langchain.prompts import PromptTemplate
-from langchain_core.runnables import RunnablePassthrough
+from langchain_community.chat_models import ChatOpenAI  # Updated import
+from langchain_core.prompts import PromptTemplate  # Updated import
+from langchain_core.output_parsers import JsonOutputParser
 import logging
 import json
 
@@ -11,10 +11,13 @@ logger = logging.getLogger(__name__)
 class ConversationService:
     def __init__(self, api_key):
         self.llm = ChatOpenAI(
-            model_name="gpt-4o",
+            model="gpt-4o",  # Updated parameter name
             temperature=0.3,
             openai_api_key=api_key
         )
+        
+        # Add JSON output parser
+        self.json_parser = JsonOutputParser()
         
         # Analysis prompt
         self.analysis_prompt = PromptTemplate(
@@ -45,8 +48,6 @@ class ConversationService:
                 "next_question": "eerste vraag die gesteld moet worden",
                 "context": "uitleg waarom deze vraag belangrijk is"
             }}
-
-            Zorg ervoor dat je output valide JSON is.
             """
         )
         
@@ -73,31 +74,31 @@ class ConversationService:
                 "processed_info": {{}},
                 "remaining_missing_info": []
             }}
-
-            Zorg ervoor dat je output valide JSON is.
             """
         )
         
-        # Create chains using the new method
-        self.analysis_chain = self.analysis_prompt | self.llm
-        self.conversation_chain = self.conversation_prompt | self.llm
+        # Create modern chain configurations using pipe syntax
+        self.analysis_chain = (
+            {"transcript": lambda x: x}
+            | self.analysis_prompt 
+            | self.llm
+            | self.json_parser
+        )
+
+        self.conversation_chain = (
+            {
+                "conversation_history": lambda x: x["conversation_history"],
+                "user_response": lambda x: x["user_response"],
+                "missing_info": lambda x: x["missing_info"]
+            }
+            | self.conversation_prompt 
+            | self.llm
+            | self.json_parser
+        )
 
     def analyze_initial_transcript(self, transcript):
         try:
-            # Use invoke instead of run
-            result = self.analysis_chain.invoke({"transcript": transcript})
-            
-            # Extract content from the result
-            content = result.content if hasattr(result, 'content') else str(result)
-            
-            # Ensure we're working with clean JSON string
-            content = content.strip()
-            if content.startswith("```json"):
-                content = content[7:-3]  # Remove JSON code block markers
-            elif content.startswith("`"):
-                content = content.strip("`")
-                
-            return json.loads(content)
+            return self.analysis_chain.invoke(transcript)
         except Exception as e:
             logger.error(f"Error analyzing transcript: {str(e)}")
             return {
@@ -113,24 +114,11 @@ class ConversationService:
 
     def process_user_response(self, conversation_history, user_response, missing_info):
         try:
-            # Use invoke instead of run
-            result = self.conversation_chain.invoke({
+            return self.conversation_chain.invoke({
                 "conversation_history": conversation_history,
                 "user_response": user_response,
                 "missing_info": json.dumps(missing_info, ensure_ascii=False)
             })
-            
-            # Extract content from the result
-            content = result.content if hasattr(result, 'content') else str(result)
-            
-            # Clean up JSON string
-            content = content.strip()
-            if content.startswith("```json"):
-                content = content[7:-3]
-            elif content.startswith("`"):
-                content = content.strip("`")
-                
-            return json.loads(content)
         except Exception as e:
             logger.error(f"Error processing response: {str(e)}")
             return {
