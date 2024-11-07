@@ -35,6 +35,11 @@ def render_chat_message(message: str, is_ai: bool):
 
 def render_conversation_ui(app_state: 'AppState', conversation_service: Any):
     """Render the conversation interface"""
+    
+    # Initialize session state for message handling
+    if 'message_sent' not in st.session_state:
+        st.session_state.message_sent = False
+    
     st.markdown("""
         <style>
         .chat-container {
@@ -68,7 +73,7 @@ def render_conversation_ui(app_state: 'AppState', conversation_service: Any):
     
     with col1:
         user_input = st.text_input(
-            "",
+            "Uw antwoord",  # Added label for accessibility
             key="user_input",
             placeholder="Typ uw antwoord hier...",
             label_visibility="collapsed"
@@ -77,7 +82,10 @@ def render_conversation_ui(app_state: 'AppState', conversation_service: Any):
     with col2:
         send_button = st.button("📤 Verstuur", use_container_width=True)
 
-    if send_button and user_input:
+    # Process user input
+    if send_button and user_input and not st.session_state.message_sent:
+        st.session_state.message_sent = True
+        
         # Add user message to history
         app_state.add_message(user_input, is_ai=False)
         
@@ -109,12 +117,13 @@ def render_conversation_ui(app_state: 'AppState', conversation_service: Any):
             if not remaining_missing_info:
                 app_state.set_analysis_complete(True)
                 app_state.set_step("results")
-                st.rerun()
-
-        # Clear input
-        st.session_state.user_input = ""
+        
         st.rerun()
-
+    
+    # Reset message_sent state if needed
+    if not send_button:
+        st.session_state.message_sent = False
+    
     st.markdown('</div>', unsafe_allow_html=True)
 
     # Debug information in expander (optional)
