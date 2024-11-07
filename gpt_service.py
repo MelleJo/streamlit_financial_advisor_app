@@ -14,6 +14,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import HumanMessage, SystemMessage
 import json
 from typing import Dict, Any, Optional
+from app_state import AppState
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

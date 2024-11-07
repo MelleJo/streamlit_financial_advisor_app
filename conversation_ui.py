@@ -10,6 +10,7 @@ user and AI responses, along with real-time message processing.
 import streamlit as st
 import json
 from typing import Dict, Any
+from app_state import AppState
 
 def render_chat_message(message: str, is_ai: bool):
     """Render a single chat message with custom styling"""

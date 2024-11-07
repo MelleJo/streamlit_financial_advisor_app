@@ -381,24 +381,68 @@ def process_transcript(transcript, gpt_service, app_state):
         st.error("Er is geen transcript om te analyseren. Voer een transcript in, upload een bestand, of neem audio op.")
 
 def render_results(app_state):
+    """Renders the analysis results using the React AdviceModule component."""
     st.title("Analyse Resultaten")
     
-    result = app_state.result
-    if result:
-        for section, content in result.items():
-            with st.expander(section.replace("_", " ").capitalize(), expanded=True):
-                st.markdown(f'<div class="section-title">{section.replace("_", " ").capitalize()}</div>', unsafe_allow_html=True)
-                # Clean the content before displaying
-                cleaned_content = clean_text_content(content)
-                format_text_with_definitions(cleaned_content, section)
-        
-        if st.button("Exporteer als Word-document", use_container_width=True):
-            export_to_docx(result)
-    else:
+    if not app_state.result:
         st.warning("Er zijn geen resultaten beschikbaar.")
+        return
+        
+    # Create components placeholder
+    components_placeholder = st.empty()
+    
+    # Prepare the data for each module
+    modules_data = []
+    for section, content in app_state.result.items():
+        if content:  # Skip empty sections
+            modules_data.append({
+                "title": section.replace("_", " ").capitalize(),
+                "content": clean_text_content(content),
+                "definitions": MORTGAGE_DEFINITIONS  # From definitions.py
+            })
+    
+    # Render all modules using a single React component
+    components_placeholder.markdown(
+        """
+        <div class="advice-modules-container" style="margin-top: 2rem;">
+            <div id="advice-modules"></div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+    
+    # Create the React component with all modules
+    st.markdown(
+        """
+        <script>
+        // Create root element for React
+        const root = ReactDOM.createRoot(document.getElementById('advice-modules'));
+        
+        // Render all modules
+        root.render(
+            React.createElement(
+                React.Fragment,
+                null,
+                modulesData.map((module, index) =>
+                    React.createElement(AdviceModule, {
+                        key: index,
+                        ...module
+                    })
+                )
+            )
+        );
+        </script>
+        """,
+        unsafe_allow_html=True
+    )
+    
+    # Export button
+    if st.button("Exporteer als Word-document", use_container_width=True):
+        export_to_docx(app_state.result)
     
     render_feedback_section(app_state)
 
+    # Navigation buttons
     col1, col2 = st.columns(2)
     with col1:
         if st.button("Terug naar Start", use_container_width=True):
@@ -406,27 +450,6 @@ def render_results(app_state):
     with col2:
         if st.button("Nieuwe Analyse", use_container_width=True):
             app_state.reset()
-
-def render_feedback_section(app_state):
-    st.markdown('<div class="feedback-card">', unsafe_allow_html=True)
-    st.markdown('<div class="feedback-title">Feedback geven</div>', unsafe_allow_html=True)
-    st.write("We waarderen uw feedback om onze service te verbeteren.")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        user_name = st.text_input("Uw naam")
-    with col2:
-        feedback_type = st.selectbox("Type feedback", ["Positief", "Negatief"])
-    
-    feedback_text = st.text_area("Uw feedback")
-    
-    if st.button("Verstuur Feedback", key="submit_feedback"):
-        if user_name and feedback_text:
-            send_feedback_email(user_name, feedback_type, feedback_text, app_state)
-        else:
-            st.error("Vul alstublieft uw naam en feedback in.")
-    
-    st.markdown('</div>', unsafe_allow_html=True)
 
 def send_feedback_email(user_name, feedback_type, feedback_text, app_state):
     try:
