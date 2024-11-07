@@ -453,7 +453,7 @@ def format_text_with_definitions(text, section_key):
     # Add custom CSS for the term highlighting
     st.markdown("""
         <style>
-        span.term {
+        .term-link {
             background-color: #E8F0FE;
             padding: 2px 8px;
             border-radius: 4px;
@@ -461,13 +461,13 @@ def format_text_with_definitions(text, section_key):
             font-weight: 500;
             cursor: pointer;
             margin: 0 2px;
-            display: inline-block;
+            display: inline;
             font-size: 0.9em;
             border: 1px solid #d2e3fc;
-            line-height: normal;
+            text-decoration: none;
         }
         
-        span.term:hover {
+        .term-link:hover {
             background-color: #d2e3fc;
         }
         
@@ -486,44 +486,55 @@ def format_text_with_definitions(text, section_key):
         st.session_state.selected_section = None
     
     with col1:
-        text = clean_text_content(text)
-        
         # Process text paragraph by paragraph
-        for paragraph in text.split('\n'):
+        paragraphs = text.split('\n')
+        for paragraph in paragraphs:
             if not paragraph.strip():
                 continue
             
-            # Create a container for this paragraph's clickable terms
+            # Initialize the processed paragraph
+            processed_paragraph = paragraph
+            term_buttons = {}
+            
+            # Replace each term with a button
             for term in MORTGAGE_DEFINITIONS.keys():
-                term_key = f"{term}_{section_key}_{hash(paragraph)}"
-                # Create a small clickable element for each term
-                if term.lower() in paragraph.lower():
-                    if st.button(term, key=term_key, help="Klik voor uitleg"):
+                pattern = r'\b' + re.escape(term) + r'\b'
+                if re.search(pattern, processed_paragraph, re.IGNORECASE):
+                    # Create a unique key for this term in this paragraph
+                    button_key = f"{term}_{section_key}_{hash(paragraph)}"
+                    if st.button(term, key=button_key, help="Klik voor uitleg"):
                         st.session_state.selected_term = term
                         st.session_state.selected_section = section_key
+                    
+                    # Store the button state
+                    term_buttons[term] = button_key
             
-            # Display the actual paragraph
-            st.markdown(f'<p class="text-paragraph">{paragraph}</p>', unsafe_allow_html=True)
+            # Now display the paragraph with highlighted terms
+            for term in MORTGAGE_DEFINITIONS.keys():
+                pattern = r'\b' + re.escape(term) + r'\b'
+                processed_paragraph = re.sub(
+                    pattern,
+                    lambda m: f'<span class="term-link">{m.group()}</span>',
+                    processed_paragraph,
+                    flags=re.IGNORECASE
+                )
+            
+            # Display the processed paragraph
+            st.markdown(
+                f'<div class="text-paragraph">{processed_paragraph}</div>',
+                unsafe_allow_html=True
+            )
     
     with col2:
         if (st.session_state.selected_term and 
             st.session_state.selected_section == section_key):
             
             st.markdown(f"""
-                <div style="background-color: white; 
-                           padding: 1rem; 
-                           border-radius: 8px; 
-                           border: 1px solid #e0e0e0;
-                           margin-bottom: 1rem;
-                           box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                    <h4 style="color: #1a73e8; 
-                             margin-bottom: 0.5rem; 
-                             font-size: 1rem;">
+                <div class="explanation-card">
+                    <div class="explanation-title">
                         📚 {st.session_state.selected_term}
-                    </h4>
-                    <div style="color: #374151; 
-                              font-size: 0.95rem; 
-                              line-height: 1.6;">
+                    </div>
+                    <div class="explanation-content">
                         {MORTGAGE_DEFINITIONS[st.session_state.selected_term].replace('\n', '<br>')}
                     </div>
                 </div>
