@@ -1,6 +1,6 @@
 import streamlit as st
 from transcription_service import TranscriptionService
-from conversation_service import ConversationService
+from gpt_service import GPTService
 from question_recorder import render_question_recorder
 import ui_components as ui
 from app_state import AppState
@@ -18,44 +18,11 @@ if 'app_state' not in st.session_state:
 if 'openai_client' not in st.session_state:
     st.session_state.openai_client = OpenAI(api_key=st.secrets["API"]["OPENAI_API_KEY"])
 
-INITIAL_QUESTIONS = [
-    {
-        "question": "Wat is het gewenste leningbedrag voor de hypotheek?",
-        "context": "Dit helpt ons om de juiste hypotheekconstructie te bepalen.",
-        "category": "leningdeel"
-    },
-    {
-        "question": "Heeft u interesse in een NHG (Nationale Hypotheek Garantie)?",
-        "context": "NHG biedt extra zekerheid en mogelijk een lagere rente.",
-        "category": "leningdeel"
-    },
-    {
-        "question": "Welke looptijd heeft uw voorkeur voor de hypotheek?",
-        "context": "De standaard looptijd is 30 jaar, maar dit kan worden aangepast.",
-        "category": "leningdeel"
-    },
-    {
-        "question": "Wat is uw voorkeur voor de rentevaste periode?",
-        "context": "Dit bepaalt hoe lang uw rente vast staat en beïnvloedt uw maandlasten.",
-        "category": "leningdeel"
-    },
-    {
-        "question": "Hoe ziet u de risico's bij eventuele werkloosheid?",
-        "context": "Dit helpt ons bij het adviseren over werkloosheidsverzekeringen.",
-        "category": "werkloosheid"
-    },
-    {
-        "question": "Wat zijn uw wensen voor de periode na pensionering?",
-        "context": "Dit helpt ons bij het plannen van uw hypotheek in relatie tot AOW en pensioen.",
-        "category": "aow"
-    }
-]
-
 def initialize_services():
     """Initialize all required services."""
     api_key = st.secrets.API.get("OPENAI_API_KEY")
     return {
-        'gpt_service': ConversationService(api_key=api_key),
+        'gpt_service': GPTService(api_key=api_key),
         'audio_service': AudioService(),
         'transcription_service': TranscriptionService()
     }
@@ -155,7 +122,6 @@ def main():
         
         # Render question recorder for additional information
         render_question_recorder(
-            questions=INITIAL_QUESTIONS,
             transcription_service=services['transcription_service'],
             on_complete=handle_questions_complete,
             on_skip=handle_questions_skip
