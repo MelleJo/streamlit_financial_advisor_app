@@ -54,38 +54,6 @@ def apply_custom_css():
         white-space: nowrap !important;
     }
     
-    /* Enhanced term button styling */
-    .stButton > button[data-testid="baseButton-secondary"] {
-        background: linear-gradient(135deg, #E8F0FE 0%, #d2e3fc 100%) !important;
-        color: #1a73e8 !important;
-        border: none !important;
-        padding: 4px 12px !important;
-        border-radius: 20px !important;
-        font-weight: 500 !important;
-        margin: 0 4px !important;
-        min-width: 0 !important;
-        height: auto !important;
-        line-height: normal !important;
-        white-space: nowrap !important;
-        box-shadow: 0 2px 4px rgba(26, 115, 232, 0.1) !important;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        position: relative !important;
-        top: 0 !important;
-    }
-
-    .stButton > button[data-testid="baseButton-secondary"]:hover {
-        background: linear-gradient(135deg, #d2e3fc 0%, #c2d9fc 100%) !important;
-        box-shadow: 0 4px 8px rgba(26, 115, 232, 0.2) !important;
-        transform: translateY(-1px) scale(1.02) !important;
-        top: -1px !important;
-    }
-
-    .stButton > button[data-testid="baseButton-secondary"]:active {
-        transform: translateY(0) scale(0.98) !important;
-        box-shadow: 0 1px 2px rgba(26, 115, 232, 0.1) !important;
-        top: 0 !important;
-    }
-    
     .stTextInput>div>div>input, .stTextArea>div>div>textarea {
         border-radius: 6px;
     }
@@ -185,6 +153,28 @@ def apply_custom_css():
         color: #1f2937;
         font-size: 1rem;
         letter-spacing: 0.01em;
+    }
+
+    .term-highlight {
+        background: linear-gradient(120deg, #E8F0FE 0%, #d2e3fc 100%);
+        border-radius: 4px;
+        padding: 2px 6px;
+        margin: 0 2px;
+        cursor: pointer;
+        display: inline-block;
+        transition: all 0.2s ease;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+    
+    .term-highlight:hover {
+        background: linear-gradient(120deg, #d2e3fc 0%, #c2d9fc 100%);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+        transform: translateY(-1px);
+    }
+    
+    .term-highlight:active {
+        transform: translateY(0);
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
     }
 
     /* Chat interface styling */
@@ -540,38 +530,55 @@ def format_text_with_definitions(text, section_key):
             if not paragraph.strip():
                 continue
             
-            processed_text = paragraph
-            current_position = 0
-            final_html = []
-
+            html_parts = []
+            current_pos = 0
+            
+            # Find all mortgage terms in the paragraph
+            term_positions = []
             for term in MORTGAGE_DEFINITIONS.keys():
                 pattern = r'\b' + re.escape(term) + r'\b'
-                matches = list(re.finditer(pattern, paragraph, re.IGNORECASE))
+                for match in re.finditer(pattern, paragraph, re.IGNORECASE):
+                    term_positions.append((match.start(), match.end(), term))
+            
+            # Sort positions to handle overlapping terms
+            term_positions.sort()
+            
+            # Build HTML with highlighted terms
+            for start, end, term in term_positions:
+                # Add text before the term
+                if start > current_pos:
+                    html_parts.append(paragraph[current_pos:start])
                 
-                for match in matches:
-                    start, end = match.span()
-                    
-                    # Add text before the term
-                    final_html.append(processed_text[current_position:start])
-                    
-                    # Add the clickable term
-                    term_key = f"term_{term}_{section_key}_{start}"
-                    if st.button(
-                        match.group(),
-                        key=term_key,
-                        use_container_width=False,
-                        help="Klik voor uitleg"
-                    ):
-                        st.session_state.selected_term = term
-                        st.session_state.selected_section = section_key
-                    
-                    current_position = end
+                # Add highlighted term with click handler
+                term_html = f"""<span 
+                    class="term-highlight" 
+                    onclick="handleTermClick('{term}')"
+                >{paragraph[start:end]}</span>"""
+                html_parts.append(term_html)
+                current_pos = end
             
             # Add remaining text
-            final_html.append(processed_text[current_position:])
+            if current_pos < len(paragraph):
+                html_parts.append(paragraph[current_pos:])
             
-            # Display the complete paragraph
-            st.markdown(f'<div class="text-paragraph">{" ".join(final_html)}</div>', unsafe_allow_html=True)
+            # Display the paragraph
+            st.markdown(
+                f'<div class="text-paragraph">{"".join(html_parts)}</div>',
+                unsafe_allow_html=True
+            )
+
+            # Add click handlers for terms
+            st.markdown("""
+                <script>
+                function handleTermClick(term) {
+                    // Use Streamlit's setComponentValue to update the selected term
+                    window.parent.postMessage({
+                        type: 'streamlit:setComponentValue',
+                        value: term
+                    }, '*');
+                }
+                </script>
+            """, unsafe_allow_html=True)
     
     with col2:
         if (st.session_state.selected_term and 
