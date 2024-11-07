@@ -99,10 +99,8 @@ def render_results(app_state):
             
             with col1:
                 # Process text paragraph by paragraph
-                for paragraph in content.split('\n'):
-                    if not paragraph.strip():
-                        continue
-                    
+                paragraphs = [p for p in content.split('\n') if p.strip()]
+                for para_idx, paragraph in enumerate(paragraphs):
                     # Find all mortgage terms in the paragraph
                     terms_in_paragraph = []
                     for term in MORTGAGE_DEFINITIONS.keys():
@@ -117,7 +115,9 @@ def render_results(app_state):
                         cols = st.columns(min(3, len(terms_in_paragraph)))
                         for idx, term in enumerate(terms_in_paragraph):
                             with cols[idx % 3]:
-                                if st.button(f"📚 {term}", key=f"{section}_{term}_{idx}"):
+                                # Make key unique by including section, paragraph index, and term index
+                                button_key = f"{section}_p{para_idx}_t{idx}_{term}"
+                                if st.button(f"📚 {term}", key=button_key):
                                     st.session_state.selected_term = term
                                     st.session_state.selected_section = section
                                     st.rerun()
