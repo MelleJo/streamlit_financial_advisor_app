@@ -5,6 +5,8 @@ BELANGRIJKE INSTRUCTIE:
 - Voeg GEEN eigen analyses of aannames toe die niet direct uit de gesprekken komen
 - Herstructureer en herschrijf de informatie uit de gesprekken in een professioneel format
 - Maak GEEN nieuwe berekeningen of conclusies die niet in de gesprekken zijn besproken
+- Gebruik de beschikbare kennisbank voor het formuleren van uitleg over arbeidsongeschiktheid, werkloosheid, AOW en overlijdensrisico
+- Pas de toon en diepgang van de uitleg aan op basis van de context van het gesprek
 
 BESCHIKBARE INFORMATIEBRONNEN:
 
@@ -28,9 +30,14 @@ VEREISTE ADVIESMODULES:
 2. Adviesmotivatie Werkloosheid:
 - Focus alleen op besproken aspecten zoals:
   * Huidige werksituatie
-  * Besproken risico's
+  * Besproken risico's en zorgen
   * Gewenste bescherming
-  * Specifieke zorgen of wensen
+  * Overweging woonlastenverzekering
+  * Specifieke redenen voor wel/niet verzekeren
+- Gebruik de kennisbank voor professionele uitleg over:
+  * Impact van werkloosheid op hypotheek
+  * Opties voor werkloosheidsdekking
+  * Voor- en nadelen van verzekeringen
 
 3. Adviesmotivatie AOW:
 - Behandel alleen genoemde onderwerpen over:
@@ -38,6 +45,23 @@ VEREISTE ADVIESMODULES:
   * Besproken zorgen
   * Gewenste situatie
   * Specifieke wensen voor later
+- Gebruik de kennisbank voor professionele uitleg over:
+  * Arbeidsongeschiktheidsrisico's
+  * Woonlastenverzekering opties
+  * Impact op hypotheeklasten
+
+4. Adviesmotivatie Overlijdensrisico:
+- Behandel alleen besproken aspecten zoals:
+  * Gewenste dekking
+  * Type overlijdensrisicoverzekering
+  * Verzekerd bedrag en looptijd
+  * Nabestaandenvoorzieningen
+- Gebruik de kennisbank voor professionele uitleg over:
+  * Verschillende typen overlijdensrisicoverzekeringen (annuïtair/lineair dalend, gelijkblijvend)
+  * Voor- en nadelen per type verzekering
+  * Nabestaandenpensioen mogelijkheden
+  * ANW-hiaat overwegingen
+  * Impact op nabestaanden
 
 OUTPUTFORMAAT:
 
@@ -47,11 +71,21 @@ Herstructureer alleen de besproken leningdeel-informatie in een duidelijk format
 
 <adviesmotivatie_werkloosheid>
 Herstructureer alleen de besproken werkloosheid-informatie in een duidelijk format.
+Gebruik de kennisbank voor professionele formulering.
 </adviesmotivatie_werkloosheid>
 
 <adviesmotivatie_aow>
 Herstructureer alleen de besproken AOW-informatie in een duidelijk format.
+Gebruik de kennisbank voor professionele formulering.
 </adviesmotivatie_aow>
+
+<adviesmotivatie_overlijdensrisico>
+Herstructureer alleen de besproken overlijdensrisico-informatie in een duidelijk format.
+Gebruik de kennisbank voor professionele formulering van:
+- Type verzekering en motivatie
+- Verzekerd bedrag en looptijd
+- Nabestaandenvoorzieningen
+</adviesmotivatie_overlijdensrisico>
 
 ONTBREKENDE INFORMATIE:
 Als bepaalde aspecten niet zijn besproken, geef dit dan duidelijk aan met "Hierover is geen informatie besproken in het gesprek." Voeg GEEN aannames of suggesties toe voor ontbrekende informatie.

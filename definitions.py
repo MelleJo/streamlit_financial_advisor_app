@@ -73,6 +73,104 @@ Kenmerken:
 - Bepalend voor maandlasten
 - Kan korter maar meestal niet langer
 """,
+
+    "arbeidsongeschiktheid": """
+Arbeidsongeschiktheid kan grote financiële gevolgen hebben voor uw hypotheek. Bij 50% arbeidsongeschiktheid en het niet kunnen vinden van passend werk voor de overige 50%, heeft u alleen recht op een WGA-vervolguitkering.
+
+Belangrijke overwegingen:
+- Impact op inkomen significant
+- WGA-vervolguitkering vaak lager dan regulier inkomen
+- Mogelijkheid tot aanvullende verzekering
+- Woonlastenverzekering als vangnet
+""",
+
+    "woonlastenverzekering": """
+Een woonlastenverzekering helpt bij het betalen van uw maandelijkse woonlasten in onverwachte situaties.
+
+Kenmerken:
+- Dekking bij arbeidsongeschiktheid of werkloosheid
+- Maximale dekking meestal 125% van woonlasten
+- Keuze in eigen risicoperiode
+- Uitkeringsduur is beperkt (vaak 12-24 maanden)
+- Netto uitkering mogelijk
+""",
+
+    "werkloosheid": """
+Het risico op werkloosheid verdient aandacht bij het afsluiten van een hypotheek. Verschillende factoren bepalen of extra verzekering wenselijk is:
+
+Overwegingen:
+- Arbeidsmarktsituatie in uw sector
+- Eigen middelen als buffer
+- Mogelijke steun partner
+- WW-uitkering als tijdelijk vangnet
+- Optie tot werkloosheidsverzekering
+""",
+
+    "werkloosheidsverzekering": """
+Een werkloosheidsverzekering kan financiële zekerheid bieden bij onvrijwillig ontslag.
+
+Aandachtspunten:
+- Alleen mogelijk met vast dienstverband
+- Dekking voor bepaalde periode
+- Wachttijd voor uitkering
+- Premiekosten afwegen tegen risico
+- Combinatie met woonlastenverzekering mogelijk
+""",
+
+    "annuitair_dalende_orv": """
+Een annuïtair dalende overlijdensrisicoverzekering is een vorm van levensverzekering waarbij het verzekerde bedrag gedurende de looptijd daalt.
+
+Kenmerken:
+- Verzekerd bedrag daalt eerst langzaam, later sneller
+- Daling vaak gelijk aan hypotheekrente percentage
+- Uitkering loopt gelijk met openstaande hypotheekschuld
+- Lagere premie dan bij gelijkblijvende verzekering
+- Medische acceptatie vereist
+""",
+
+    "lineair_dalende_orv": """
+Een lineair dalende overlijdensrisicoverzekering is een vorm van levensverzekering waarbij het verzekerde bedrag in gelijke stappen daalt.
+
+Kenmerken:
+- Verzekerd bedrag daalt jaarlijks met gelijk bedrag
+- Daling in rechte lijn tot nul
+- Lagere premie dan bij gelijkblijvende verzekering
+- Medische acceptatie vereist
+- Vaste jaarlijkse afname verzekerd bedrag
+""",
+
+    "gelijkblijvende_orv": """
+Een gelijkblijvende overlijdensrisicoverzekering houdt hetzelfde verzekerde bedrag gedurende de hele looptijd.
+
+Kenmerken:
+- Verzekerd bedrag blijft gelijk
+- Premie blijft gelijk
+- Uitkering onafhankelijk van moment overlijden
+- Medische acceptatie vereist
+- Hogere premie dan bij dalende verzekeringen
+""",
+
+    "nabestaandenpensioen": """
+Het nabestaandenpensioen is een uitkering voor uw partner en/of kinderen na uw overlijden, meestal gekoppeld aan uw pensioenregeling.
+
+Kenmerken:
+- Standaard onderdeel pensioenregeling
+- Uitkering voor partner
+- Extra uitkering voor kinderen tot 21 jaar of studerend
+- Aanvulling op andere voorzieningen mogelijk
+- Belangrijk onderdeel financiële planning
+""",
+
+    "anw_hiaat": """
+Een ANW-hiaatverzekering biedt extra financiële zekerheid voor uw nabestaanden, onafhankelijk van hun eigen inkomen.
+
+Kenmerken:
+- Vooraf vastgesteld uitkeringsbedrag
+- Onafhankelijk van partnerinkomen
+- Aanvulling op nabestaandenpensioen
+- Extra financiële zekerheid
+- Compensatie inkomensverlies na overlijden
+"""
 }
 
 def improve_explanation(term, base_uitleg, originele_tekst, client):
