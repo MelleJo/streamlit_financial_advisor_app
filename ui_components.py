@@ -456,30 +456,62 @@ def format_text_with_definitions(text, section_key):
     if 'selected_term' not in st.session_state:
         st.session_state.selected_term = None
         st.session_state.selected_section = None
+    if 'enhanced_texts' not in st.session_state:
+        st.session_state.enhanced_texts = {}
     
     with col1:
-        # Clean up text first
         text = clean_text_content(text)
-        paragraphs = text.split('\n')
         
-        for paragraph in paragraphs:
+        # Keep track of already processed terms
+        processed_terms = set()
+        
+        for paragraph in text.split('\n'):
             if not paragraph.strip():
                 continue
-                
-            current_text = paragraph
+            
+            current_pos = 0
+            html_parts = []
+            
             for term in MORTGAGE_DEFINITIONS.keys():
                 pattern = r'\b' + re.escape(term) + r'\b'
-                current_text = re.sub(
-                    pattern,
-                    lambda m: f'<button class="term-button" onclick="streamlit.setComponentValue(\'{{"term": "{term}", "section": "{section_key}"}}\');">{m.group()}</button>',
-                    current_text,
-                    flags=re.IGNORECASE
-                )
+                for match in re.finditer(pattern, paragraph, re.IGNORECASE):
+                    start, end = match.span()
+                    
+                    # Add text before the term
+                    if start > current_pos:
+                        html_parts.append(paragraph[current_pos:start])
+                    
+                    # Create unique key for this term instance
+                    term_instance = f"{term}_{start}_{section_key}"
+                    if term_instance not in processed_terms:
+                        processed_terms.add(term_instance)
+                    
+                    # Add the term as a button
+                    button_clicked = st.button(
+                        paragraph[start:end],
+                        key=term_instance,
+                        help="Klik voor uitleg",
+                        use_container_width=False,
+                    )
+                    
+                    if button_clicked:
+                        st.session_state.selected_term = term
+                        st.session_state.selected_section = section_key
+                    
+                    current_pos = end
             
-            st.markdown(
-                f'<div style="margin-bottom: 1em;">{current_text}</div>',
-                unsafe_allow_html=True
-            )
+            # Add remaining text
+            if current_pos < len(paragraph):
+                html_parts.append(paragraph[current_pos:])
+            
+            # Display the paragraph
+            if html_parts:
+                st.markdown(
+                    f'<div style="margin-bottom: 1em;">{"".join(html_parts)}</div>',
+                    unsafe_allow_html=True
+                )
+            else:
+                st.markdown(f'<div style="margin-bottom: 1em;">{paragraph}</div>', unsafe_allow_html=True)
     
     with col2:
         if (st.session_state.selected_term and 
@@ -494,11 +526,12 @@ def format_text_with_definitions(text, section_key):
                 </div>
             """, unsafe_allow_html=True)
             
-            if st.button("➕ Voeg uitleg toe", 
-                        type="primary",
-                        use_container_width=True,
-                        key=f"add_{section_key}"):
-                
+            if st.button(
+                "➕ Voeg uitleg toe", 
+                type="primary",
+                use_container_width=True,
+                key=f"add_{section_key}_{st.session_state.selected_term}"  # Made key unique
+            ):
                 enhanced_text = improve_explanation(
                     st.session_state.selected_term,
                     MORTGAGE_DEFINITIONS[st.session_state.selected_term],
@@ -506,9 +539,7 @@ def format_text_with_definitions(text, section_key):
                     st.session_state.openai_client
                 )
                 
-                # Update both states
                 if enhanced_text:
-                    st.session_state.enhanced_texts = getattr(st.session_state, 'enhanced_texts', {})
                     st.session_state.enhanced_texts[section_key] = enhanced_text
                     if hasattr(st.session_state, 'app_state'):
                         if section_key in st.session_state.app_state.result:
