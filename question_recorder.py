@@ -1,190 +1,155 @@
 """
 File: question_recorder.py
-Implements an intelligent question recording interface based on checklist analysis.
 """
-
 import streamlit as st
 from streamlit_mic_recorder import mic_recorder
 from typing import Dict, Any, Callable
-import asyncio
-from checklist_analysis_service import ChecklistAnalysisService, CHECKLIST_SECTIONS
 
 def render_question_recorder(
     transcription_service,
-    checklist_service: ChecklistAnalysisService,
+    checklist_service,
     on_complete: Callable[[Dict[str, str]], None],
     on_skip: Callable[[], None],
     initial_transcript: str
 ):
-    """Renders an intelligent question recording interface based on checklist analysis."""
+    """Renders an intelligent question recording interface for missing information."""
     
-    # Initialize session state for tracking questions and answers
-    if 'current_question' not in st.session_state:
-        st.session_state.current_question = None
-    if 'answers' not in st.session_state:
-        st.session_state.answers = []
-    if 'missing_points' not in st.session_state:
-        # Analyze initial transcript when first loading
-        analysis_result = asyncio.run(checklist_service.analyze_transcript(initial_transcript))
-        st.session_state.missing_points = analysis_result.get('missing_points', {})
-        st.session_state.current_question = analysis_result.get('next_questions', [{}])[0]
-
-    # Custom CSS for better visual hierarchy
     st.markdown("""
         <style>
-        .checklist-container {
-            background: white;
-            padding: 1.5rem;
+        .missing-topics {
+            background-color: #fff;
             border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            margin-bottom: 1.5rem;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        .checklist-section {
-            margin-bottom: 1rem;
+        .topic-section {
+            margin-bottom: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            background-color: #f8f9fa;
         }
-        .checklist-section-title {
+        .topic-title {
             font-weight: 600;
             color: #1a73e8;
-            margin-bottom: 0.5rem;
+            margin-bottom: 10px;
+            font-size: 1.1em;
         }
-        .checklist-item {
-            display: flex;
-            align-items: center;
-            padding: 0.5rem;
-            border-radius: 4px;
-        }
-        .checklist-item.missing {
-            background-color: #fef2f2;
-        }
-        .checklist-item.complete {
-            background-color: #f0fdf4;
-        }
-        .question-container {
-            background: #f8fafc;
-            padding: 1.5rem;
-            border-radius: 10px;
-            margin-top: 1.5rem;
-        }
-        .context-box {
-            background: #e8f0fe;
-            padding: 1rem;
+        .topic-item {
+            padding: 8px 12px;
+            background-color: #fff;
             border-radius: 6px;
-            margin-bottom: 1rem;
+            margin-bottom: 8px;
+            border-left: 3px solid #dc2626;
+        }
+        .recording-section {
+            background-color: #f8fafc;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            border: 1px solid #e5e7eb;
+        }
+        .instruction-text {
+            color: #374151;
             font-style: italic;
-            color: #1e40af;
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #e8f0fe;
+            border-radius: 6px;
+        }
+        .explanation-text {
+            padding: 10px;
+            background-color: #fff3ed;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            color: #b45309;
         }
         </style>
     """, unsafe_allow_html=True)
 
-    # Show checklist progress
-    st.markdown("### 📋 Voortgang Checklist")
+    # Show original transcript in expander
+    with st.expander("📝 Oorspronkelijk transcript", expanded=False):
+        st.markdown(f"```{initial_transcript}```")
+
+    # Analyze transcript using GPT-4-mini
+    with st.spinner("Transcript wordt geanalyseerd..."):
+        analysis = checklist_service.analyze_transcript(initial_transcript)
     
-    with st.expander("Bekijk voortgang", expanded=True):
-        st.markdown('<div class="checklist-container">', unsafe_allow_html=True)
+    missing_topics = analysis.get('missing_topics', {})
+    explanation = analysis.get('explanation', '')
+    
+    if not missing_topics:
+        st.success("✅ Alle benodigde informatie is aanwezig in het transcript!")
+        if st.button("➡️ Doorgaan naar Analyse", use_container_width=True):
+            on_complete({
+                'transcript': initial_transcript,
+                'missing_topics': {}
+            })
+    else:
+        st.markdown("### 📋 Ontbrekende Informatie")
+        st.markdown('<div class="missing-topics">', unsafe_allow_html=True)
         
-        for section, points in CHECKLIST_SECTIONS.items():
-            st.markdown(f'<div class="checklist-section">', unsafe_allow_html=True)
-            st.markdown(f'<div class="checklist-section-title">{section.capitalize()}</div>', unsafe_allow_html=True)
-            
-            for point in points:
-                is_missing = point in st.session_state.missing_points.get(section, [])
-                status_class = "missing" if is_missing else "complete"
-                icon = "❌" if is_missing else "✅"
-                
-                st.markdown(
-                    f'<div class="checklist-item {status_class}">{icon} {point}</div>',
-                    unsafe_allow_html=True
-                )
-            
-            st.markdown('</div>', unsafe_allow_html=True)
+        if explanation:
+            st.markdown(f'<div class="explanation-text">{explanation}</div>', unsafe_allow_html=True)
+        
+        for section, topics in missing_topics.items():
+            if topics:  # Only show sections with missing topics
+                st.markdown(f'<div class="topic-section">', unsafe_allow_html=True)
+                section_titles = {
+                    'leningdeel': '💰 Leningdeel',
+                    'werkloosheid': '🏢 Werkloosheid',
+                    'aow': '👴 AOW & Pensioen'
+                }
+                st.markdown(f'<div class="topic-title">{section_titles.get(section, section.capitalize())}</div>', unsafe_allow_html=True)
+                for topic in topics:
+                    st.markdown(f'<div class="topic-item">❌ {topic}</div>', unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
         
         st.markdown('</div>', unsafe_allow_html=True)
-
-    # Show current question and recording interface
-    if st.session_state.current_question:
-        st.markdown("### 🎙️ Volgende Vraag")
-        st.markdown('<div class="question-container">', unsafe_allow_html=True)
         
-        # Show question context
-        if st.session_state.current_question.get('context'):
-            st.markdown(
-                f'<div class="context-box">{st.session_state.current_question["context"]}</div>',
-                unsafe_allow_html=True
-            )
+        st.markdown("### 🎙️ Aanvullende Informatie Opnemen")
+        st.markdown('<div class="recording-section">', unsafe_allow_html=True)
         
-        # Show the question
-        st.write(f"**{st.session_state.current_question['question']}**")
+        st.markdown("""
+            <div class="instruction-text">
+            📌 Neem alle ontbrekende informatie in één keer op. Behandel systematisch alle bovenstaande punten in uw opname.
+            </div>
+        """, unsafe_allow_html=True)
         
-        # Recording interface
-        col1, col2 = st.columns([2, 1])
+        col1, col2 = st.columns([2,1])
         
         with col1:
             audio = mic_recorder(
                 start_prompt="Start Opname",
                 stop_prompt="Stop Opname",
-                key="answer_recording"
+                key="batch_recording"
             )
 
         with col2:
-            if st.button("➡️ Volgende Vraag", use_container_width=True):
-                # Generate next question
-                next_question = asyncio.run(checklist_service.generate_next_question(
-                    st.session_state.missing_points,
-                    st.session_state.answers
-                ))
-                
-                if next_question.get('question'):
-                    st.session_state.current_question = next_question
-                else:
-                    # No more questions needed
-                    on_complete({
-                        'answers': st.session_state.answers,
-                        'missing_points': st.session_state.missing_points
-                    })
-                st.rerun()
-
-        # Process recorded answer
+            if st.button("⏩ Sla Opname Over", use_container_width=True, type="secondary"):
+                on_skip()
+        
         if audio:
-            with st.spinner("Antwoord wordt verwerkt..."):
+            with st.spinner("Opname wordt verwerkt..."):
                 transcript = transcription_service.transcribe(
                     audio['bytes'],
                     mode="accurate",
-                    language="nl",
-                    prompt=st.session_state.current_question['question']
+                    language="nl"
                 )
                 
                 if transcript:
-                    # Store the answer
-                    st.session_state.answers.append({
-                        'question': st.session_state.current_question['question'],
-                        'answer': transcript,
-                        'related_points': st.session_state.current_question.get('related_points', [])
+                    st.success("✅ Opname succesvol verwerkt!")
+                    complete_transcript = f"{initial_transcript}\n\nAanvullende informatie:\n{transcript}"
+                    
+                    # Reanalyze to confirm all points are covered
+                    final_analysis = checklist_service.analyze_transcript(complete_transcript)
+                    if not final_analysis.get('missing_topics'):
+                        st.success("🎯 Alle benodigde informatie is nu compleet!")
+                    
+                    on_complete({
+                        'transcript': complete_transcript,
+                        'additional_transcript': transcript,
+                        'missing_topics': final_analysis.get('missing_topics', {})
                     })
-                    
-                    # Update missing points
-                    for point in st.session_state.current_question.get('related_points', []):
-                        for section in st.session_state.missing_points:
-                            if point in st.session_state.missing_points[section]:
-                                st.session_state.missing_points[section].remove(point)
-                    
-                    # Get next question
-                    next_question = asyncio.run(checklist_service.generate_next_question(
-                        st.session_state.missing_points,
-                        st.session_state.answers
-                    ))
-                    
-                    if next_question.get('question'):
-                        st.session_state.current_question = next_question
-                    else:
-                        # No more questions needed
-                        on_complete({
-                            'answers': st.session_state.answers,
-                            'missing_points': st.session_state.missing_points
-                        })
-                    st.rerun()
         
         st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Skip button
-    if st.button("🏁 Afronden", use_container_width=True, type="secondary"):
-        on_skip()
