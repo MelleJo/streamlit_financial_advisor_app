@@ -54,9 +54,36 @@ def apply_custom_css():
         white-space: nowrap !important;
     }
     
-    .stButton > button:hover {
-        background-color: #d2e3fc !important;
-        border-color: #1a73e8 !important;
+    /* Enhanced term button styling */
+    .stButton > button[data-testid="baseButton-secondary"] {
+        background: linear-gradient(135deg, #E8F0FE 0%, #d2e3fc 100%) !important;
+        color: #1a73e8 !important;
+        border: none !important;
+        padding: 4px 12px !important;
+        border-radius: 20px !important;
+        font-weight: 500 !important;
+        margin: 0 4px !important;
+        min-width: 0 !important;
+        height: auto !important;
+        line-height: normal !important;
+        white-space: nowrap !important;
+        box-shadow: 0 2px 4px rgba(26, 115, 232, 0.1) !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        position: relative !important;
+        top: 0 !important;
+    }
+
+    .stButton > button[data-testid="baseButton-secondary"]:hover {
+        background: linear-gradient(135deg, #d2e3fc 0%, #c2d9fc 100%) !important;
+        box-shadow: 0 4px 8px rgba(26, 115, 232, 0.2) !important;
+        transform: translateY(-1px) scale(1.02) !important;
+        top: -1px !important;
+    }
+
+    .stButton > button[data-testid="baseButton-secondary"]:active {
+        transform: translateY(0) scale(0.98) !important;
+        box-shadow: 0 1px 2px rgba(26, 115, 232, 0.1) !important;
+        top: 0 !important;
     }
     
     .stTextInput>div>div>input, .stTextArea>div>div>textarea {
@@ -104,51 +131,60 @@ def apply_custom_css():
         margin-bottom: 1em;
         color: #3b82f6;
     }
-    
-    .term-button {
-        display: inline-block;
-        background-color: #E8F0FE;
-        padding: 2px 8px;
-        border-radius: 4px;
-        color: #1a73e8;
-        font-weight: 500;
-        border: none;
-        margin: 0 2px;
-        cursor: pointer;
-        text-decoration: none;
-        transition: all 0.2s ease;
-    }
 
-    .term-button:hover {
-        background-color: #d2e3fc;
-    }
-
+    /* Enhanced explanation card styling */
     .explanation-card {
-        background-color: white;
-        padding: 1rem;
-        border-radius: 8px;
-        border: 1px solid #e0e0e0;
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        padding: 1.25rem;
+        border-radius: 12px;
+        border: 1px solid rgba(226, 232, 240, 0.8);
         margin-bottom: 1rem;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05),
+                    0 10px 15px rgba(0, 0, 0, 0.025);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .explanation-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 8px rgba(0, 0, 0, 0.08),
+                    0 12px 18px rgba(0, 0, 0, 0.04);
     }
 
     .explanation-title {
         color: #1a73e8;
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.75rem;
         font-size: 1.1rem;
-        font-weight: 500;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        border-bottom: 2px solid rgba(26, 115, 232, 0.1);
+        padding-bottom: 0.5rem;
     }
 
     .explanation-content {
-        color: #333;
+        color: #374151;
         font-size: 0.95rem;
-        line-height: 1.6;
+        line-height: 1.7;
+        letter-spacing: 0.01em;
     }
 
     .text-paragraph {
-        line-height: 1.6;
-        margin-bottom: 1em;
+        line-height: 1.8;
+        margin-bottom: 1.25em;
         color: #1f2937;
+        font-size: 1rem;
+        letter-spacing: 0.01em;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -509,20 +545,11 @@ def format_text_with_definitions(text, section_key):
             st.session_state.selected_section == section_key):
             
             st.markdown(f"""
-                <div style="background-color: white; 
-                           padding: 1rem; 
-                           border-radius: 8px; 
-                           border: 1px solid #e0e0e0;
-                           margin-bottom: 1rem;
-                           box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                    <h4 style="color: #1a73e8; 
-                             margin-bottom: 0.5rem; 
-                             font-size: 1rem;">
+                <div class="explanation-card">
+                    <div class="explanation-title">
                         📚 {st.session_state.selected_term}
-                    </h4>
-                    <div style="color: #374151; 
-                              font-size: 0.95rem; 
-                              line-height: 1.6;">
+                    </div>
+                    <div class="explanation-content">
                         {MORTGAGE_DEFINITIONS[st.session_state.selected_term].replace('\n', '<br>')}
                     </div>
                 </div>
