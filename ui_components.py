@@ -435,15 +435,14 @@ def render_person_details(app_state):
 
 def clean_text_content(text):
     """Clean and format text content."""
-    # Remove excessive newlines
-    text = re.sub(r'\n\s*\n', '\n', text)
-    
-    # Ensure proper spacing around sections
-    text = re.sub(r'([a-z])\n([A-Z])', r'\1\n\n\2', text)
-    
+    # Remove excessive whitespace
+    text = re.sub(r'\s+', ' ', text)
+    # Ensure proper sentence spacing
+    text = re.sub(r'([.!?])\s*', r'\1\n', text)
     # Clean up bullet points
     text = re.sub(r'\n\s*•\s*', '\n• ', text)
-    
+    # Remove empty lines
+    text = '\n'.join(line for line in text.split('\n') if line.strip())
     return text.strip()
 
 def format_text_with_definitions(text, section_key):
@@ -451,26 +450,31 @@ def format_text_with_definitions(text, section_key):
     if not text:
         return text
 
-    # Custom CSS for the terms
+    # Add custom CSS for the term highlighting
     st.markdown("""
         <style>
-        .term-link {
-            display: inline;
+        span.term {
             background-color: #E8F0FE;
             padding: 2px 8px;
             border-radius: 4px;
             color: #1a73e8;
             font-weight: 500;
             cursor: pointer;
-            text-decoration: none;
             margin: 0 2px;
+            display: inline-block;
+            font-size: 0.9em;
+            border: 1px solid #d2e3fc;
+            line-height: normal;
         }
-        .term-link:hover {
+        
+        span.term:hover {
             background-color: #d2e3fc;
         }
-        .text-content p {
+        
+        .text-paragraph {
             line-height: 1.6;
             margin-bottom: 1em;
+            color: #1f2937;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -484,46 +488,42 @@ def format_text_with_definitions(text, section_key):
     with col1:
         text = clean_text_content(text)
         
+        # Process text paragraph by paragraph
         for paragraph in text.split('\n'):
             if not paragraph.strip():
                 continue
-                
-            # Process all terms in the paragraph
-            processed_text = paragraph
             
-            # Dictionary to store button states
-            button_states = {}
-            
+            # Create a container for this paragraph's clickable terms
             for term in MORTGAGE_DEFINITIONS.keys():
-                pattern = r'\b' + re.escape(term) + r'\b'
-                matches = list(re.finditer(pattern, processed_text, re.IGNORECASE))
-                
-                for match in matches:
-                    start, end = match.span()
-                    term_instance = f"{term}_{start}_{section_key}"
-                    
-                    # Create a clickable term with proper styling
-                    if st.button(
-                        processed_text[start:end],
-                        key=term_instance,
-                        help="Klik voor uitleg",
-                        use_container_width=False,
-                    ):
+                term_key = f"{term}_{section_key}_{hash(paragraph)}"
+                # Create a small clickable element for each term
+                if term.lower() in paragraph.lower():
+                    if st.button(term, key=term_key, help="Klik voor uitleg"):
                         st.session_state.selected_term = term
                         st.session_state.selected_section = section_key
-                        button_states[term_instance] = True
             
-            # Display paragraph with proper formatting
-            st.markdown(f'<div class="text-content">{processed_text}</div>', unsafe_allow_html=True)
+            # Display the actual paragraph
+            st.markdown(f'<p class="text-paragraph">{paragraph}</p>', unsafe_allow_html=True)
     
     with col2:
         if (st.session_state.selected_term and 
             st.session_state.selected_section == section_key):
             
             st.markdown(f"""
-                <div class="explanation-card">
-                    <div class="explanation-title">📚 {st.session_state.selected_term}</div>
-                    <div class="explanation-content">
+                <div style="background-color: white; 
+                           padding: 1rem; 
+                           border-radius: 8px; 
+                           border: 1px solid #e0e0e0;
+                           margin-bottom: 1rem;
+                           box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <h4 style="color: #1a73e8; 
+                             margin-bottom: 0.5rem; 
+                             font-size: 1rem;">
+                        📚 {st.session_state.selected_term}
+                    </h4>
+                    <div style="color: #374151; 
+                              font-size: 0.95rem; 
+                              line-height: 1.6;">
                         {MORTGAGE_DEFINITIONS[st.session_state.selected_term].replace('\n', '<br>')}
                     </div>
                 </div>
