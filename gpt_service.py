@@ -173,26 +173,41 @@ class GPTService:
             content = response.content
             logger.info(f"Raw LLM response: {content}")
             
-            # Parse sections
+            # Initialize sections
             sections = {
-                "adviesmotivatie_leningdeel": "",
-                "adviesmotivatie_werkloosheid": "",
-                "adviesmotivatie_aow": ""
+                "adviesmotivatie_leningdeel": [],
+                "adviesmotivatie_werkloosheid": [],
+                "adviesmotivatie_aow": []
             }
             
+            # Parse sections using list accumulation
+            lines = content.split('\n')
             current_section = None
-            for line in content.split('\n'):
+            
+            for line in lines:
                 line = line.strip()
+                if not line:
+                    continue
+                    
                 if line.startswith('<adviesmotivatie_'):
-                    current_section = line[1:-1]
+                    tag = line.strip('<>')
+                    if tag in sections:
+                        current_section = tag
                 elif line.startswith('</adviesmotivatie_'):
                     current_section = None
                 elif current_section and current_section in sections:
-                    sections[current_section] += line + '\n'
+                    sections[current_section].append(line)
             
-            # Verify all sections have content
-            result = {k: v.strip() for k, v in sections.items() if v.strip()}
-            if len(result) != 3:  # All three sections should have content
+            # Convert accumulated lists to strings
+            result = {}
+            for section, lines in sections.items():
+                if lines:  # Only include sections that have content
+                    result[section] = '\n'.join(lines)
+                else:
+                    result[section] = "Geen informatie beschikbaar voor deze sectie."
+            
+            # Verify we have all required sections
+            if len(result) != 3:
                 return self._get_default_analysis_response("Incomplete analyse")
                 
             return result
