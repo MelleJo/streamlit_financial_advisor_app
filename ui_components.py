@@ -450,68 +450,71 @@ def format_text_with_definitions(text, section_key):
     """Format text by highlighting defined terms and making them clickable."""
     if not text:
         return text
+
+    # Custom CSS for the terms
+    st.markdown("""
+        <style>
+        .term-link {
+            display: inline;
+            background-color: #E8F0FE;
+            padding: 2px 8px;
+            border-radius: 4px;
+            color: #1a73e8;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            margin: 0 2px;
+        }
+        .term-link:hover {
+            background-color: #d2e3fc;
+        }
+        .text-content p {
+            line-height: 1.6;
+            margin-bottom: 1em;
+        }
+        </style>
+    """, unsafe_allow_html=True)
     
     col1, col2 = st.columns([2, 1])
     
     if 'selected_term' not in st.session_state:
         st.session_state.selected_term = None
         st.session_state.selected_section = None
-    if 'enhanced_texts' not in st.session_state:
-        st.session_state.enhanced_texts = {}
     
     with col1:
         text = clean_text_content(text)
         
-        # Keep track of already processed terms
-        processed_terms = set()
-        
         for paragraph in text.split('\n'):
             if not paragraph.strip():
                 continue
+                
+            # Process all terms in the paragraph
+            processed_text = paragraph
             
-            current_pos = 0
-            html_parts = []
+            # Dictionary to store button states
+            button_states = {}
             
             for term in MORTGAGE_DEFINITIONS.keys():
                 pattern = r'\b' + re.escape(term) + r'\b'
-                for match in re.finditer(pattern, paragraph, re.IGNORECASE):
+                matches = list(re.finditer(pattern, processed_text, re.IGNORECASE))
+                
+                for match in matches:
                     start, end = match.span()
-                    
-                    # Add text before the term
-                    if start > current_pos:
-                        html_parts.append(paragraph[current_pos:start])
-                    
-                    # Create unique key for this term instance
                     term_instance = f"{term}_{start}_{section_key}"
-                    if term_instance not in processed_terms:
-                        processed_terms.add(term_instance)
                     
-                    # Add the term as a button
-                    button_clicked = st.button(
-                        paragraph[start:end],
+                    # Create a clickable term with proper styling
+                    if st.button(
+                        processed_text[start:end],
                         key=term_instance,
                         help="Klik voor uitleg",
                         use_container_width=False,
-                    )
-                    
-                    if button_clicked:
+                    ):
                         st.session_state.selected_term = term
                         st.session_state.selected_section = section_key
-                    
-                    current_pos = end
+                        button_states[term_instance] = True
             
-            # Add remaining text
-            if current_pos < len(paragraph):
-                html_parts.append(paragraph[current_pos:])
-            
-            # Display the paragraph
-            if html_parts:
-                st.markdown(
-                    f'<div style="margin-bottom: 1em;">{"".join(html_parts)}</div>',
-                    unsafe_allow_html=True
-                )
-            else:
-                st.markdown(f'<div style="margin-bottom: 1em;">{paragraph}</div>', unsafe_allow_html=True)
+            # Display paragraph with proper formatting
+            st.markdown(f'<div class="text-content">{processed_text}</div>', unsafe_allow_html=True)
     
     with col2:
         if (st.session_state.selected_term and 
@@ -530,7 +533,7 @@ def format_text_with_definitions(text, section_key):
                 "➕ Voeg uitleg toe", 
                 type="primary",
                 use_container_width=True,
-                key=f"add_{section_key}_{st.session_state.selected_term}"  # Made key unique
+                key=f"add_{section_key}_{st.session_state.selected_term}"
             ):
                 enhanced_text = improve_explanation(
                     st.session_state.selected_term,
