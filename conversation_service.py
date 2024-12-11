@@ -136,11 +136,11 @@ class ConversationService:
             }
 
     def process_user_response(
-    self, 
-    conversation_history: str, 
-    user_response: str, 
-    missing_info: Dict[str, Any]
-) -> Dict[str, Any]:
+        self, 
+        conversation_history: str, 
+        user_response: str, 
+        missing_info: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Processes user response and returns next interaction details."""
         try:
             # Format conversation history into messages
@@ -172,15 +172,26 @@ class ConversationService:
             result = json.loads(content)
             logger.info(f"Processed user response: {result}")
             
-            # If there are remaining missing topics, generate specific question
-            if result.get("remaining_missing_info"):
-                # Get the first category that has missing items
+            # Normalize remaining_missing_info to ensure it's a dictionary
+            if "remaining_missing_info" in result:
+                if isinstance(result["remaining_missing_info"], list):
+                    # Convert list to dictionary format
+                    result["remaining_missing_info"] = {
+                        "general": result["remaining_missing_info"]
+                    }
+                
+                # Generate next question based on remaining topics
                 for category, items in result["remaining_missing_info"].items():
                     if items:  # If this category has missing items
-                        first_missing = items[0]
-                        result["next_question"] = self._generate_question_for_missing_topic(category, first_missing)
-                        result["context"] = f"We hebben meer informatie nodig over {CHECKLIST[category]['title'].lower()}"
-                        break
+                        if isinstance(items, list) and items:
+                            first_missing = items[0]
+                            if category in CHECKLIST:
+                                result["next_question"] = self._generate_question_for_missing_topic(category, first_missing)
+                                result["context"] = f"We hebben meer informatie nodig over {CHECKLIST[category]['title'].lower()}"
+                            else:
+                                result["next_question"] = f"Kunt u meer vertellen over {first_missing.lower()}?"
+                                result["context"] = "We hebben aanvullende informatie nodig"
+                            break
             
             logger.info("Successfully processed user response")
             return result
@@ -196,6 +207,10 @@ class ConversationService:
 
     def _generate_question_for_missing_topic(self, category: str, missing_item: str) -> str:
         """Generates a specific question based on the missing checklist item."""
+        # First check if the category exists in CHECKLIST
+        if category not in CHECKLIST:
+            return f"Kunt u meer vertellen over {missing_item.lower()}?"
+            
         questions = {
             "leningdeel": {
                 "Exacte leningbedrag met onderbouwing": "Wat is het exacte leningbedrag dat u nodig heeft en waarom?",
