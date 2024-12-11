@@ -39,13 +39,19 @@ if 'enhanced_texts' not in st.session_state:
 
 def initialize_services():
     """Initialize all required services."""
-    api_key = st.secrets.API.get("OPENAI_API_KEY")
+    api_key = st.secrets["OPENAI_API_KEY"]
+    groq_key = st.secrets["GROQ_API_KEY"]
+    
     return {
         'gpt_service': GPTService(api_key=api_key),
         'audio_service': AudioService(),
         'transcription_service': TranscriptionService(),
         'checklist_service': ChecklistAnalysisService(api_key=api_key)
     }
+
+# Initialize OpenAI client
+if 'openai_client' not in st.session_state:
+    st.session_state.openai_client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 def handle_questions_complete(answers):
     """Handle completion of additional questions."""

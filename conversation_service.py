@@ -27,9 +27,9 @@ class ConversationService:
         self.llm = ChatOpenAI(
             model="gpt-4o-2024-08-06",
             temperature=0.3,
-            openai_api_key=api_key
+            api_key=st.secrets["OPENAI_API_KEY"]
         )
-        self.checklist_service = ChecklistAnalysisService(api_key)
+        self.checklist_service = ChecklistAnalysisService(api_key=api_key)
         
         # Analysis prompt template
         self.analysis_prompt = ChatPromptTemplate.from_messages([

@@ -20,8 +20,8 @@ logger = logging.getLogger(__name__)
 
 class TranscriptionService:
     def __init__(self):
-        self.openai_client = OpenAI(api_key=st.secrets["API"]["OPENAI_API_KEY"])
-        self.groq_client = Groq(api_key=st.secrets["API"]["GROQ_API_KEY"])
+        self.openai_client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+        self.groq_client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
     def transcribe(
         self, 
