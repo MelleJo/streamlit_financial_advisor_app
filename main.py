@@ -40,7 +40,7 @@ if 'enhanced_texts' not in st.session_state:
 def initialize_services():
     """Initialize all required services."""
     api_key = st.secrets["OPENAI_API_KEY"]
-    #groq_key = st.secrets["GROQ_API_KEY"]
+    groq_key = st.secrets["GROQ_API_KEY"]
     
     return {
         'gpt_service': GPTService(api_key=api_key),

@@ -1,10 +1,6 @@
 """
 File: transcription_service.py
 Handles audio transcription functionality for the AI Hypotheek Assistent.
-This service provides audio transcription capabilities using both Groq and OpenAI's Whisper models.
-It implements a fallback mechanism where if the primary transcription service (Groq) fails,
-it automatically falls back to using OpenAI's Whisper. The service supports different transcription
-modes (fast, accurate, fallback) and handles various audio input formats.
 """
 
 import streamlit as st
@@ -20,8 +16,19 @@ logger = logging.getLogger(__name__)
 
 class TranscriptionService:
     def __init__(self):
-        self.openai_client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-        self.groq_client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+        # Initialize OpenAI client
+        try:
+            self.openai_client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+        except KeyError:
+            logger.warning("OpenAI API key not found in secrets")
+            self.openai_client = None
+            
+        # Initialize Groq client if API key is available
+        try:
+            self.groq_client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+        except KeyError:
+            logger.warning("Groq API key not found in secrets, falling back to OpenAI only")
+            self.groq_client = None
 
     def transcribe(
         self, 
@@ -32,15 +39,17 @@ class TranscriptionService:
     ) -> Optional[str]:
         """Main transcription method that handles all transcription needs."""
         try:
-            if mode == "fast":
-                return self._transcribe_with_whisper(audio_input)
-            elif mode == "accurate":
+            if not self.openai_client:
+                st.error("OpenAI API key is required for transcription")
+                return None
+
+            if mode == "accurate" and self.groq_client:
                 try:
                     return self._transcribe_with_groq(audio_input, language, prompt)
                 except Exception as e:
                     logger.warning(f"Groq transcription failed: {str(e)}. Falling back to Whisper.")
                     return self._transcribe_with_whisper(audio_input)
-            else:  # fallback
+            else:  # fast mode or fallback
                 return self._transcribe_with_whisper(audio_input)
                 
         except Exception as e:
@@ -55,6 +64,9 @@ class TranscriptionService:
         prompt: Optional[str] = None
     ) -> str:
         """Transcribes audio using Groq's Whisper Large V3 Turbo."""
+        if not self.groq_client:
+            raise Exception("Groq client not initialized")
+
         with tempfile.NamedTemporaryFile(delete=False, suffix=".m4a") as temp_audio_file:
             try:
                 if isinstance(audio_input, bytes):
@@ -86,6 +98,9 @@ class TranscriptionService:
         language: str = "nl"
     ) -> str:
         """Transcribes audio using OpenAI's Whisper."""
+        if not self.openai_client:
+            raise Exception("OpenAI client not initialized")
+
         with tempfile.NamedTemporaryFile(delete=False, suffix=".m4a") as temp_audio_file:
             try:
                 if isinstance(audio_input, bytes):
