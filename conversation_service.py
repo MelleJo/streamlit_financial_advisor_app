@@ -172,27 +172,26 @@ class ConversationService:
             result = json.loads(content)
             logger.info(f"Processed user response: {result}")
             
-            # Normalize remaining_missing_info to ensure it's a dictionary
+            # Handle remaining_missing_info based on its type
             if "remaining_missing_info" in result:
-                if isinstance(result["remaining_missing_info"], list):
-                    # Convert list to dictionary format
-                    result["remaining_missing_info"] = {
-                        "general": result["remaining_missing_info"]
-                    }
+                remaining_info = result["remaining_missing_info"]
                 
-                # Generate next question based on remaining topics
-                for category, items in result["remaining_missing_info"].items():
-                    if items:  # If this category has missing items
-                        if isinstance(items, list) and items:
+                if isinstance(remaining_info, list):
+                    # If it's a list, generate a question for the first missing item
+                    if remaining_info:
+                        first_missing = remaining_info[0]
+                        result["next_question"] = f"Kunt u meer vertellen over {first_missing.lower()}?"
+                        result["context"] = "We hebben aanvullende informatie nodig"
+                else:
+                    # If it's a dictionary, use the existing category-based logic
+                    for category, items in remaining_info.items():
+                        if items and isinstance(items, list) and items:
                             first_missing = items[0]
                             if category in CHECKLIST:
                                 result["next_question"] = self._generate_question_for_missing_topic(category, first_missing)
                                 result["context"] = f"We hebben meer informatie nodig over {CHECKLIST[category]['title'].lower()}"
-                            else:
-                                result["next_question"] = f"Kunt u meer vertellen over {first_missing.lower()}?"
-                                result["context"] = "We hebben aanvullende informatie nodig"
                             break
-            
+
             logger.info("Successfully processed user response")
             return result
             
