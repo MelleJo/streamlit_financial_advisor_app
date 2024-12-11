@@ -12,14 +12,51 @@ class AppState:
     def __init__(self):
         self.step = "input"
         self.transcript = None
+        self.klantprofiel = None  # New: Store klantprofiel content
         self.result = None
         self.missing_info = None
         self.additional_info = None
         self.conversation_history = []
         self.analysis_complete = False
-        self.structured_qa_history = []  # New: Track Q&A pairs with context
-        self.remaining_topics = {}  # New: Track remaining topics to discuss
+        self.structured_qa_history = []
+        self.remaining_topics = {}
 
+
+    def set_klantprofiel(self, content: str) -> None:
+        """Set the klantprofiel content."""
+        self.klantprofiel = content
+
+    def get_combined_info(self) -> Dict[str, Any]:
+        """Get combined information from all sources."""
+        return {
+            "transcript": self.transcript,
+            "klantprofiel": self.klantprofiel,  # Include klantprofiel in combined info
+            "additional_info": self.additional_info,
+            "missing_info": self.missing_info,
+            "conversation_history": self.conversation_history,
+            "structured_qa_history": self.structured_qa_history,
+            "remaining_topics": self.remaining_topics
+        }
+    
+    def get_conversation_summary(self) -> str:
+        """Get a formatted summary of the conversation history."""
+        summary_parts = []
+        
+        if self.klantprofiel:
+            summary_parts.append("Klantprofiel:\n" + self.klantprofiel)
+            
+        if self.transcript:
+            summary_parts.append("\nOorspronkelijk transcript:\n" + self.transcript)
+        
+        if self.structured_qa_history:
+            summary_parts.append("\nAanvullende vragen en antwoorden:")
+            for qa in self.structured_qa_history:
+                summary_parts.append(f"\nContext: {qa['context']}")
+                summary_parts.append(f"Vraag: {qa['question']}")
+                summary_parts.append(f"Antwoord: {qa['answer']}")
+        
+        return "\n".join(summary_parts)
+    
     def set_transcript(self, transcript: str) -> None:
         """Set the initial transcript."""
         self.transcript = transcript

@@ -80,6 +80,36 @@ def render_input_section(services, app_state):
     """Render the initial input section with multiple input options."""
     st.title("Hypotheekadvies Invoer")
     
+    # Klantprofiel upload
+    st.subheader("1. Upload Klantprofiel")
+    uploaded_klantprofiel = st.file_uploader(
+        "Upload het klantprofiel document",
+        type=["pdf", "txt", "docx"],
+        key="klantprofiel_uploader"
+    )
+    
+    if uploaded_klantprofiel:
+        try:
+            if uploaded_klantprofiel.type == "application/pdf":
+                # Use PyPDF2 or similar to extract text
+                import PyPDF2
+                pdf_reader = PyPDF2.PdfReader(uploaded_klantprofiel)
+                klantprofiel_text = ""
+                for page in pdf_reader.pages:
+                    klantprofiel_text += page.extract_text()
+            elif uploaded_klantprofiel.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+                from docx import Document
+                doc = Document(uploaded_klantprofiel)
+                klantprofiel_text = "\n".join([paragraph.text for paragraph in doc.paragraphs])
+            else:
+                klantprofiel_text = uploaded_klantprofiel.getvalue().decode("utf-8")
+            
+            app_state.set_klantprofiel(klantprofiel_text)
+            st.success("✅ Klantprofiel succesvol geüpload")
+        except Exception as e:
+            st.error(f"Error bij verwerken klantprofiel: {str(e)}")
+    
+    st.subheader("2. Voeg adviesgesprek toe")
     tab1, tab2, tab3 = st.tabs(["🎙️ Opnemen", "📁 Uploaden", "📝 Tekst invoeren"])
     
     with tab1:
@@ -99,7 +129,8 @@ def render_input_section(services, app_state):
         st.write("Upload een audio- of tekstbestand")
         uploaded_file = st.file_uploader(
             "Kies een bestand",
-            type=["txt", "docx", "wav", "mp3", "m4a"]
+            type=["txt", "docx", "wav", "mp3", "m4a"],
+            key="transcript_uploader"
         )
         if uploaded_file:
             with st.spinner("Bestand wordt verwerkt..."):
