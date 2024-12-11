@@ -141,7 +141,7 @@ class ConversationService:
         user_response: str, 
         missing_info: Dict[str, Any]
     ) -> Dict[str, Any]:
-        """Processes user response and returns next interaction details."""
+        """Processes user response and returns all pending questions."""
         try:
             # Format conversation history into messages
             messages = []
@@ -172,25 +172,34 @@ class ConversationService:
             result = json.loads(content)
             logger.info(f"Processed user response: {result}")
             
-            # Handle remaining_missing_info based on its type
-            if "remaining_missing_info" in result:
-                remaining_info = result["remaining_missing_info"]
-                
-                if isinstance(remaining_info, list):
-                    # If it's a list, generate a question for the first missing item
-                    if remaining_info:
-                        first_missing = remaining_info[0]
-                        result["next_question"] = f"Kunt u meer vertellen over {first_missing.lower()}?"
-                        result["context"] = "We hebben aanvullende informatie nodig"
-                else:
-                    # If it's a dictionary, use the existing category-based logic
-                    for category, items in remaining_info.items():
-                        if items and isinstance(items, list) and items:
-                            first_missing = items[0]
-                            if category in CHECKLIST:
-                                result["next_question"] = self._generate_question_for_missing_topic(category, first_missing)
-                                result["context"] = f"We hebben meer informatie nodig over {CHECKLIST[category]['title'].lower()}"
-                            break
+            # Generate all pending questions
+            questions = []
+            remaining_info = result.get("remaining_missing_info", {})
+            
+            if isinstance(remaining_info, list):
+                # Handle list format
+                for missing_item in remaining_info:
+                    questions.append({
+                        "question": f"Kunt u meer vertellen over {missing_item.lower()}?",
+                        "context": "We hebben aanvullende informatie nodig",
+                        "category": "general",
+                        "topic": missing_item
+                    })
+            else:
+                # Handle dictionary format
+                for category, items in remaining_info.items():
+                    if isinstance(items, list):
+                        for item in items:
+                            question = self._generate_question_for_missing_topic(category, item)
+                            questions.append({
+                                "question": question,
+                                "context": f"Informatie over {CHECKLIST.get(category, {}).get('title', category).lower()}",
+                                "category": category,
+                                "topic": item
+                            })
+
+            result["questions"] = questions
+            result["all_topics_complete"] = len(questions) == 0
 
             logger.info("Successfully processed user response")
             return result
@@ -198,10 +207,15 @@ class ConversationService:
         except Exception as e:
             logger.error(f"Error processing response: {str(e)}")
             return {
-                "next_question": "Kunt u dat nog eens anders formuleren?",
-                "context": "Ik begreep uw antwoord niet helemaal.",
+                "questions": [{
+                    "question": "Kunt u dat nog eens anders formuleren?",
+                    "context": "Ik begreep uw antwoord niet helemaal.",
+                    "category": "general",
+                    "topic": "clarification"
+                }],
                 "processed_info": {},
-                "remaining_missing_info": missing_info
+                "remaining_missing_info": missing_info,
+                "all_topics_complete": False
             }
 
     def _generate_question_for_missing_topic(self, category: str, missing_item: str) -> str:
