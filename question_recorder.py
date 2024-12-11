@@ -197,6 +197,6 @@ def render_question_recorder(
                             'missing_topics': {}
                         })
                     else:
-                        st.experimental_rerun()
+                        st.rerun()
         
         st.markdown('</div>', unsafe_allow_html=True)
