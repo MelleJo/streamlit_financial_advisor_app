@@ -136,20 +136,21 @@ class ConversationService:
             }
 
     def process_user_response(
-        self, 
-        conversation_history: str, 
-        user_response: str, 
-        missing_info: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    self, 
+    conversation_history: str, 
+    user_response: str, 
+    missing_info: Dict[str, Any]
+) -> Dict[str, Any]:
         """Processes user response and returns next interaction details."""
         try:
             # Format conversation history into messages
-            messages = [
-                SystemMessage(content=line) if "AI: " in line 
-                else HumanMessage(content=line.replace("Klant: ", ""))
-                for line in conversation_history.split("\n")
-                if line.strip()
-            ]
+            messages = []
+            for line in conversation_history.split("\n"):
+                if line.strip():
+                    if line.startswith("AI: "):
+                        messages.append(SystemMessage(content=line[4:]))
+                    elif line.startswith("Klant: "):
+                        messages.append(HumanMessage(content=line[7:]))
             
             # Get response from LLM with checklist context
             prompt_messages = self.conversation_prompt.format_messages(
@@ -169,12 +170,17 @@ class ConversationService:
                 content = content.strip("`")
             
             result = json.loads(content)
+            logger.info(f"Processed user response: {result}")
             
             # If there are remaining missing topics, generate specific question
-            if result["remaining_missing_info"]:
-                first_category = next(iter(result["remaining_missing_info"]))
-                first_missing = result["remaining_missing_info"][first_category][0]
-                result["next_question"] = self._generate_question_for_missing_topic(first_category, first_missing)
+            if result.get("remaining_missing_info"):
+                # Get the first category that has missing items
+                for category, items in result["remaining_missing_info"].items():
+                    if items:  # If this category has missing items
+                        first_missing = items[0]
+                        result["next_question"] = self._generate_question_for_missing_topic(category, first_missing)
+                        result["context"] = f"We hebben meer informatie nodig over {CHECKLIST[category]['title'].lower()}"
+                        break
             
             logger.info("Successfully processed user response")
             return result
