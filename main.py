@@ -32,7 +32,7 @@ if 'app_state' not in st.session_state:
     st.session_state.app_state = AppState()
 
 if 'openai_client' not in st.session_state:
-    st.session_state.openai_client = OpenAI(api_key=st.secrets["API"]["OPENAI_API_KEY"])
+    st.session_state.openai_client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 if 'enhanced_texts' not in st.session_state:
     st.session_state.enhanced_texts = {}
