@@ -5,13 +5,11 @@ Handles audio transcription functionality for the AI Hypotheek Assistent.
 
 import streamlit as st
 from openai import OpenAI
-from groq import Groq
+from typing import Optional, Union, BinaryIO, Literal
 import tempfile
 import os
 import logging
-from typing import Optional, Union, BinaryIO, Literal
-import ffmpeg  # For audio conversion
-import io
+import ffmpeg
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -24,12 +22,16 @@ class TranscriptionService:
         except KeyError:
             logger.warning("OpenAI API key not found in secrets")
             self.openai_client = None
-            
-        # Initialize Groq client if API key is available
+
+        # Initialize Groq client only if API key exists
+        self.groq_client = None
         try:
-            self.groq_client = Groq(api_key=st.secrets.get("GROQ_API_KEY"))
-        except KeyError:
-            logger.warning("Groq API key not found in secrets, falling back to OpenAI only")
+            if st.secrets.get("GROQ_API_KEY"):
+                from groq import Groq
+                self.groq_client = Groq(api_key=st.secrets.get("GROQ_API_KEY"))
+                logger.info("Groq client initialized")
+        except Exception as e:
+            logger.info(f"Groq client not initialized: {str(e)}")
             self.groq_client = None
 
     def _convert_audio_to_mp3(self, audio_data: Union[bytes, BinaryIO]) -> bytes:
@@ -91,14 +93,15 @@ class TranscriptionService:
                 st.error("Error converting audio. Please ensure the audio file is valid.")
                 return None
 
+            # Try Groq first if available and accurate mode is requested
             if mode == "accurate" and self.groq_client:
                 try:
                     return self._transcribe_with_groq(audio_data, language, prompt)
                 except Exception as e:
                     logger.warning(f"Groq transcription failed: {str(e)}. Falling back to Whisper.")
-                    return self._transcribe_with_whisper(audio_data)
-            else:  # fast mode or fallback
-                return self._transcribe_with_whisper(audio_data)
+            
+            # Otherwise use Whisper
+            return self._transcribe_with_whisper(audio_data, language)
                 
         except Exception as e:
             logger.error(f"Transcription failed: {str(e)}")
@@ -122,11 +125,11 @@ class TranscriptionService:
 
                 with open(temp_audio_file.name, "rb") as audio_file:
                     response = self.groq_client.audio.transcriptions.create(
-                        file=(temp_audio_file.name, audio_file.read()),
-                        model="whisper-large-v3-turbo",
+                        file=audio_file,
+                        model="whisper-large-v3",
                         language=language,
                         prompt=prompt,
-                        response_format="json",
+                        response_format="text",
                         temperature=0.0
                     )
                 
