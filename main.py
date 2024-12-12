@@ -14,6 +14,9 @@ from openai import OpenAI
 from audio_service import AudioService
 from checklist_analysis_service import ChecklistAnalysisService
 from fp_service import FPService
+from fp_analysis_service import FPAnalysisService
+from fp_report_service import FPReportService
+import fp_ui_components as fp_ui
 
 def initialize_services():
     """Initialize all required services."""
@@ -28,7 +31,9 @@ def initialize_services():
         'audio_service': AudioService(),
         'transcription_service': TranscriptionService(),
         'checklist_service': ChecklistAnalysisService(api_key=api_key),
-        'fp_service': FPService(api_key=api_key)
+        'fp_service': FPService(api_key=api_key),
+        'fp_analysis': FPAnalysisService(api_key=api_key),
+        'fp_report': FPReportService()
     }
 
 def render_input_section(services, app_state):
