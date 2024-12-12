@@ -53,7 +53,7 @@ def render_question_recorder(
 
     # Initialize conversation service if not already in session state
     if 'conversation_service' not in st.session_state:
-        st.session_state.conversation_service = ConversationService(st.secrets.API.get("OPENAI_API_KEY"))
+        st.session_state.conversation_service = ConversationService(st.secrets["OPENAI_API_KEY"])
     
     # Initialize conversation history if not already in session state
     if 'conversation_history' not in st.session_state:
