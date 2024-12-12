@@ -17,3 +17,5 @@ typing-extensions
 groq
 PyPDF2
 ffmpeg-python
+plotly
+streamlit_option_menu

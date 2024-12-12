@@ -10,9 +10,10 @@ from typing import Dict, Any, Optional, List
 
 class AppState:
     def __init__(self):
+        # Existing state
         self.step = "input"
         self.transcript = None
-        self.klantprofiel = None  # New: Store klantprofiel content
+        self.klantprofiel = None
         self.result = None
         self.missing_info = None
         self.additional_info = None
@@ -20,7 +21,61 @@ class AppState:
         self.analysis_complete = False
         self.structured_qa_history = []
         self.remaining_topics = {}
+        
+        # New FP-specific state
+        self.fp_report = {
+            "samenvatting": None,
+            "uitwerking_advies": None,
+            "bevindingen_huidige_situatie": None,
+            "situatie_voor_advies": None,
+            "situatie_na_advies": None,
+            "financiele_situatie_later": {
+                "voor_advies": None,
+                "na_advies": None
+            },
+            "financiele_situatie_overlijden": {
+                "voor_advies": None,
+                "na_advies": None
+            },
+            "financiele_situatie_arbeidsongeschiktheid": {
+                "voor_advies": None,
+                "na_advies": None
+            },
+            "erven_en_schenken": None,
+            "actiepunten": {
+                "client": [],
+                "veldhuis": []
+            }
+        }
+        
+        # Track report sections completion
+        self.fp_sections_complete = {
+            "samenvatting": False,
+            "uitwerking_advies": False,
+            "bevindingen_huidige_situatie": False,
+            "financiele_situatie_later": False,
+            "financiele_situatie_overlijden": False,
+            "financiele_situatie_arbeidsongeschiktheid": False,
+            "erven_en_schenken": False,
+            "actiepunten": False
+        }
 
+    def update_fp_section(self, section: str, content: dict) -> None:
+        """Update a specific section of the FP report"""
+        if section in self.fp_report:
+            self.fp_report[section] = content
+            self.fp_sections_complete[section] = True
+
+    def get_fp_report_status(self) -> dict:
+        """Get the completion status of the FP report"""
+        return {
+            "sections_complete": self.fp_sections_complete,
+            "all_complete": all(self.fp_sections_complete.values())
+        }
+
+    def reset_fp_report(self) -> None:
+        """Reset the FP report state"""
+        self.__init__()
 
     def set_klantprofiel(self, content: str) -> None:
         """Set the klantprofiel content."""
