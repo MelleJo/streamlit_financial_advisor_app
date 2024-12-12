@@ -1,6 +1,6 @@
 """
 File: main.py
-Main application file for the AI Hypotheek/Pensioen/FP Assistent.
+Main application file for the Veldhuis Advies Assistant.
 """
 
 import streamlit as st
@@ -13,10 +13,6 @@ from app_state import AppState
 from openai import OpenAI
 from audio_service import AudioService
 from checklist_analysis_service import ChecklistAnalysisService
-from fp_components import (
-    render_fp_header, render_progress_bar, render_samenvatting,
-    render_situation_comparison, render_action_points
-)
 from fp_service import FPService
 
 def initialize_services():
@@ -37,14 +33,19 @@ def initialize_services():
 
 def render_input_section(services, app_state):
     """Render the initial input section with multiple input options."""
-    st.title("Advies Invoer")
+    module_titles = {
+        "hypotheek": "Hypotheek Advies Invoer",
+        "pensioen": "Pensioen Advies Invoer",
+        "fp": "Financiële Planning Invoer"
+    }
+    st.title(module_titles.get(app_state.active_module, "Advies Invoer"))
     
     # Klantprofiel upload
     st.subheader("1. Upload Klantprofiel")
     uploaded_klantprofiel = st.file_uploader(
         "Upload het klantprofiel document",
         type=["pdf", "txt", "docx"],
-        key="klantprofiel_uploader"
+        key=f"klantprofiel_uploader_{app_state.active_module}"
     )
     
     if uploaded_klantprofiel:
@@ -88,7 +89,7 @@ def render_input_section(services, app_state):
         uploaded_file = st.file_uploader(
             "Kies een bestand",
             type=["txt", "docx", "wav", "mp3", "m4a"],
-            key="transcript_uploader"
+            key=f"transcript_uploader_{app_state.active_module}"
         )
         if uploaded_file:
             with st.spinner("Bestand wordt verwerkt..."):
@@ -108,9 +109,10 @@ def render_input_section(services, app_state):
         transcript = st.text_area(
             "Plak of typ hier uw tekst:",
             height=300,
+            key=f"text_input_{app_state.active_module}",
             placeholder="Voer hier het transcript van uw adviesgesprek in..."
         )
-        if st.button("Analyseer", use_container_width=True):
+        if st.button("Analyseer", key=f"analyze_btn_{app_state.active_module}", use_container_width=True):
             process_initial_input(transcript, services, app_state)
 
 def process_initial_input(transcript, services, app_state):
@@ -120,12 +122,10 @@ def process_initial_input(transcript, services, app_state):
         
         with st.spinner("Transcript wordt geanalyseerd..."):
             if app_state.active_module == "fp":
-                # Process for FP module
                 analysis = services['fp_service'].analyze_transcript(transcript)
                 app_state.fp_state.update_section("samenvatting", analysis)
                 app_state.set_step("fp_sections")
             else:
-                # Process for Hypotheek/Pensioen
                 analysis = services['gpt_service'].analyze_initial_transcript(transcript)
                 if analysis:
                     app_state.set_missing_info(analysis.get('missing_info', {}))
@@ -136,91 +136,73 @@ def process_initial_input(transcript, services, app_state):
                         app_state.set_step("additional_questions")
             st.rerun()
 
-def render_fp_module(services, app_state):
-    """Render the FP module interface."""
+def handle_questions_complete(answers, app_state):
+    """Handle completion of additional questions."""
+    app_state.set_additional_info(answers)
+    app_state.set_step("results")
+    st.rerun()
+
+def handle_questions_skip(app_state):
+    """Handle skipping of additional questions."""
+    app_state.set_step("results")
+    st.rerun()
+
+def render_hypotheek_module(app_state, services):
+    """Render the Hypotheek module interface."""
+    if app_state.step == "input":
+        render_input_section(services, app_state)
+    elif app_state.step == "additional_questions":
+        with st.expander("📝 Oorspronkelijk transcript"):
+            st.write(app_state.transcript)
+        render_question_recorder(
+            services['transcription_service'],
+            services['checklist_service'],
+            lambda answers: handle_questions_complete(answers, app_state),
+            lambda: handle_questions_skip(app_state),
+            app_state.transcript
+        )
+    elif app_state.step == "results":
+        if not app_state.result:
+            with st.spinner("Eindrapport wordt gegenereerd..."):
+                result = services['gpt_service'].analyze_transcript(
+                    app_state.transcript,
+                    app_state
+                )
+                if result:
+                    app_state.set_result(result)
+        ui.render_results(app_state)
+
+def render_pensioen_module(app_state, services):
+    """Render the Pensioen module interface."""
+    if app_state.step == "input":
+        render_input_section(services, app_state)
+    elif app_state.step == "additional_questions":
+        with st.expander("📝 Oorspronkelijk transcript"):
+            st.write(app_state.transcript)
+        render_question_recorder(
+            services['transcription_service'],
+            services['checklist_service'],
+            lambda answers: handle_questions_complete(answers, app_state),
+            lambda: handle_questions_skip(app_state),
+            app_state.transcript
+        )
+    elif app_state.step == "results":
+        if not app_state.result:
+            with st.spinner("Eindrapport wordt gegenereerd..."):
+                result = services['gpt_service'].analyze_transcript(
+                    app_state.transcript,
+                    app_state
+                )
+                if result:
+                    app_state.set_result(result)
+        ui.render_results(app_state)
+
+def render_fp_module(app_state, services):
+    """Render the Financial Planning module interface."""
     if app_state.step == "input":
         render_input_section(services, app_state)
     elif app_state.step == "fp_sections":
-        render_fp_header()
-        
-        # Show progress
-        progress = app_state.fp_state.get_progress()
-        render_progress_bar(progress)
-        
-        # Section selection
-        sections = {
-            "Samenvatting": "samenvatting",
-            "Uitwerking Advies": "uitwerking_advies",
-            "Huidige Situatie": "huidige_situatie",
-            "Situatie Later": "situatie_later",
-            "Situatie Overlijden": "situatie_overlijden",
-            "Situatie Arbeidsongeschiktheid": "situatie_arbeidsongeschiktheid",
-            "Erven en Schenken": "erven_schenken",
-            "Actiepunten": "actiepunten"
-        }
-        
-        section = st.selectbox("Selecteer sectie", list(sections.keys()))
-        section_key = sections[section]
-        
-        # Show original transcript in expander
-        with st.expander("📝 Oorspronkelijk transcript", expanded=False):
-            st.write(app_state.transcript)
-        
-        # Audio recording for selected section
-        st.subheader("🎙️ Neem uw adviesnotities op")
-        
-        audio = services['audio_service'].record_audio()
-        if audio:
-            with st.spinner("Audio wordt verwerkt..."):
-                result = services['fp_service'].process_advisor_recording(
-                    audio['bytes'],
-                    section_key
-                )
-                if result:
-                    app_state.fp_state.update_section(section_key, result)
-                    st.success(f"Sectie {section} is bijgewerkt!")
-                    st.rerun()
-        
-        # Generate final report button
-        if app_state.fp_state.is_complete():
-            if st.button("Genereer Eindrapport", use_container_width=True):
-                app_state.set_step("fp_report")
-                st.rerun()
-                
-    elif app_state.step == "fp_report":
-        render_fp_header()
-        report_data = services['fp_service'].generate_fp_report(app_state)
-        
-        # Render each section
-        render_samenvatting(report_data["samenvatting"])
-        st.markdown("---")
-        
-        for section, data in report_data.items():
-            if section != "samenvatting" and section != "actiepunten":
-                if section in ["situatie_later", "situatie_overlijden", "situatie_arbeidsongeschiktheid"]:
-                    render_situation_comparison(
-                        section.replace("_", " ").title(),
-                        data["voor_advies"],
-                        data["na_advies"]
-                    )
-                else:
-                    st.header(section.replace("_", " ").title())
-                    st.write(data.get("content", ""))
-                    if data.get("graphs"):
-                        st.plotly_chart(data["graphs"])
-                st.markdown("---")
-        
-        render_action_points(report_data["actiepunten"])
-        
-        # Export options
-        st.markdown("### 📑 Export Opties")
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("Download als PDF", use_container_width=True):
-                ui.export_to_pdf(report_data)
-        with col2:
-            if st.button("Download als Word", use_container_width=True):
-                ui.export_to_docx(report_data)
+        ui.render_fp_report(app_state, services)
 
 def main():
     """Main application flow."""
@@ -244,35 +226,20 @@ def main():
         default_index=0,
         orientation="horizontal",
     )
-    app_state.active_module = selected.lower()
+    
+    # Handle module change
+    if app_state.active_module != selected.lower():
+        app_state.active_module = selected.lower()
+        app_state.reset()  # Reset state when switching modules
+        st.rerun()
     
     # Render appropriate module
-    if app_state.active_module == "fp":
-        render_fp_module(services, app_state)
-    else:
-        # Existing Hypotheek/Pensioen flow
-        if app_state.step == "input":
-            render_input_section(services, app_state)
-        elif app_state.step == "additional_questions":
-            with st.expander("📝 Oorspronkelijk transcript"):
-                st.write(app_state.transcript)
-            render_question_recorder(
-                services['transcription_service'],
-                services['checklist_service'],
-                lambda answers: handle_questions_complete(answers, app_state),
-                lambda: handle_questions_skip(app_state),
-                app_state.transcript
-            )
-        elif app_state.step == "results":
-            if not app_state.result:
-                with st.spinner("Eindrapport wordt gegenereerd..."):
-                    result = services['gpt_service'].analyze_transcript(
-                        app_state.transcript,
-                        app_state
-                    )
-                    if result:
-                        app_state.set_result(result)
-            ui.render_results(app_state)
+    if app_state.active_module == "hypotheek":
+        render_hypotheek_module(app_state, services)
+    elif app_state.active_module == "pensioen":
+        render_pensioen_module(app_state, services)
+    elif app_state.active_module == "fp":
+        render_fp_module(app_state, services)
     
     # Reset button in sidebar
     if st.sidebar.button("Start Opnieuw", use_container_width=True):

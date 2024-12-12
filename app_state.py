@@ -1,117 +1,109 @@
 """
 File: app_state.py
-Manages the application state for the AI Hypotheek Assistent.
-This class handles all state management including the current step in the application flow,
-transcript data, analysis results, missing information, and conversation history.
-It provides methods to modify and retrieve state data in a controlled manner.
+Manages the application state for the Veldhuis Advies Assistant.
 """
 
 from typing import Dict, Any, Optional, List
+from dataclasses import dataclass, field
+
+@dataclass
+class FPState:
+    """State management for Financial Planning functionality"""
+    samenvatting: Dict = field(default_factory=lambda: {
+        "netto_besteedbaar_inkomen": None,
+        "hoofdpunten": [],
+        "kernadvies": None
+    })
+    
+    uitwerking_advies: Dict = field(default_factory=lambda: {
+        "content": None,
+        "graphs": None
+    })
+    
+    huidige_situatie: Dict = field(default_factory=lambda: {
+        "content": None,
+        "graphs": None
+    })
+    
+    situatie_later: Dict = field(default_factory=lambda: {
+        "voor_advies": None,
+        "na_advies": None,
+        "graphs": None
+    })
+    
+    situatie_overlijden: Dict = field(default_factory=lambda: {
+        "voor_advies": None,
+        "na_advies": None,
+        "graphs": None
+    })
+    
+    situatie_arbeidsongeschiktheid: Dict = field(default_factory=lambda: {
+        "voor_advies": None,
+        "na_advies": None,
+        "graphs": None
+    })
+    
+    erven_schenken: Dict = field(default_factory=dict)
+    
+    actiepunten: Dict = field(default_factory=lambda: {
+        "client": [],
+        "veldhuis": []
+    })
+    
+    sections_complete: Dict = field(default_factory=lambda: {
+        "samenvatting": False,
+        "uitwerking_advies": False,
+        "huidige_situatie": False,
+        "situatie_later": False,
+        "situatie_overlijden": False,
+        "situatie_arbeidsongeschiktheid": False,
+        "erven_schenken": False,
+        "actiepunten": False
+    })
+
+    def update_section(self, section: str, content: Dict) -> None:
+        """Update content for a specific section"""
+        if hasattr(self, section):
+            setattr(self, section, content)
+            self.sections_complete[section] = True
+
+    def is_complete(self) -> bool:
+        """Check if all sections are complete"""
+        return all(self.sections_complete.values())
+
+    def get_progress(self) -> float:
+        """Get progress percentage"""
+        completed = sum(1 for x in self.sections_complete.values() if x)
+        total = len(self.sections_complete)
+        return (completed / total) * 100 if total > 0 else 0
 
 class AppState:
+    """Main application state management"""
     def __init__(self):
-        # Existing state
+        # Basic state
         self.step = "input"
+        self.active_module = "hypotheek"  # Default module
+        
+        # Shared state
         self.transcript = None
         self.klantprofiel = None
         self.result = None
-        self.missing_info = None
         self.additional_info = None
         self.conversation_history = []
+        
+        # Module-specific state
+        self.missing_info = None
         self.analysis_complete = False
         self.structured_qa_history = []
         self.remaining_topics = {}
         
-        # New FP-specific state
-        self.fp_report = {
-            "samenvatting": None,
-            "uitwerking_advies": None,
-            "bevindingen_huidige_situatie": None,
-            "situatie_voor_advies": None,
-            "situatie_na_advies": None,
-            "financiele_situatie_later": {
-                "voor_advies": None,
-                "na_advies": None
-            },
-            "financiele_situatie_overlijden": {
-                "voor_advies": None,
-                "na_advies": None
-            },
-            "financiele_situatie_arbeidsongeschiktheid": {
-                "voor_advies": None,
-                "na_advies": None
-            },
-            "erven_en_schenken": None,
-            "actiepunten": {
-                "client": [],
-                "veldhuis": []
-            }
-        }
-        
-        # Track report sections completion
-        self.fp_sections_complete = {
-            "samenvatting": False,
-            "uitwerking_advies": False,
-            "bevindingen_huidige_situatie": False,
-            "financiele_situatie_later": False,
-            "financiele_situatie_overlijden": False,
-            "financiele_situatie_arbeidsongeschiktheid": False,
-            "erven_en_schenken": False,
-            "actiepunten": False
-        }
-
-    def update_fp_section(self, section: str, content: dict) -> None:
-        """Update a specific section of the FP report"""
-        if section in self.fp_report:
-            self.fp_report[section] = content
-            self.fp_sections_complete[section] = True
-
-    def get_fp_report_status(self) -> dict:
-        """Get the completion status of the FP report"""
-        return {
-            "sections_complete": self.fp_sections_complete,
-            "all_complete": all(self.fp_sections_complete.values())
-        }
-
-    def reset_fp_report(self) -> None:
-        """Reset the FP report state"""
-        self.__init__()
+        # FP specific state
+        self.fp_state = FPState()
 
     def set_klantprofiel(self, content: str) -> None:
         """Set the klantprofiel content."""
         self.klantprofiel = content
 
-    def get_combined_info(self) -> Dict[str, Any]:
-        """Get combined information from all sources."""
-        return {
-            "transcript": self.transcript,
-            "klantprofiel": self.klantprofiel,  # Include klantprofiel in combined info
-            "additional_info": self.additional_info,
-            "missing_info": self.missing_info,
-            "conversation_history": self.conversation_history,
-            "structured_qa_history": self.structured_qa_history,
-            "remaining_topics": self.remaining_topics
-        }
-    
-    def get_conversation_summary(self) -> str:
-        """Get a formatted summary of the conversation history."""
-        summary_parts = []
-        
-        if self.klantprofiel:
-            summary_parts.append("Klantprofiel:\n" + self.klantprofiel)
-            
-        if self.transcript:
-            summary_parts.append("\nOorspronkelijk transcript:\n" + self.transcript)
-        
-        if self.structured_qa_history:
-            summary_parts.append("\nAanvullende vragen en antwoorden:")
-            for qa in self.structured_qa_history:
-                summary_parts.append(f"\nContext: {qa['context']}")
-                summary_parts.append(f"Vraag: {qa['question']}")
-                summary_parts.append(f"Antwoord: {qa['answer']}")
-        
-        return "\n".join(summary_parts)
-    
     def set_transcript(self, transcript: str) -> None:
         """Set the initial transcript."""
         self.transcript = transcript
@@ -126,13 +118,8 @@ class AppState:
         }
 
     def set_additional_info(self, additional_info: Dict[str, Any]) -> None:
-        """
-        Set additional information gathered through questions.
-        Now handles structured Q&A history.
-        """
+        """Set additional information gathered through questions."""
         self.additional_info = additional_info
-        
-        # If additional info contains conversation history, update structured history
         if 'conversation_history' in additional_info:
             self._update_structured_history(additional_info['conversation_history'])
 
@@ -141,10 +128,10 @@ class AppState:
         current_qa = {}
         for message in conversation_history:
             if message.startswith("AI: "):
-                current_qa['question'] = message[4:]  # Remove "AI: " prefix
+                current_qa['question'] = message[4:]
             elif message.startswith("Klant: "):
-                current_qa['answer'] = message[7:]  # Remove "Klant: " prefix
-                if 'question' in current_qa:  # Only add if we have both Q&A
+                current_qa['answer'] = message[7:]
+                if 'question' in current_qa:
                     self.structured_qa_history.append(dict(current_qa))
                     current_qa = {}
 
@@ -157,10 +144,7 @@ class AppState:
         self.step = step
 
     def add_message(self, content: str, is_ai: bool = False, context: Optional[str] = None) -> None:
-        """
-        Add a message to the conversation history.
-        Now includes context for better conversation tracking.
-        """
+        """Add a message to the conversation history."""
         message = {
             "content": content,
             "is_ai": is_ai,
@@ -172,10 +156,7 @@ class AppState:
         self.conversation_history.append(message)
 
     def add_qa_pair(self, question: str, answer: str, context: str, category: str) -> None:
-        """
-        Add a structured Q&A pair with context and category.
-        Also updates remaining topics.
-        """
+        """Add a structured Q&A pair with context and category."""
         qa_pair = {
             "question": question,
             "answer": answer,
@@ -201,12 +182,10 @@ class AppState:
         self.analysis_complete = complete
 
     def get_combined_info(self) -> Dict[str, Any]:
-        """
-        Get combined information from all sources.
-        Now includes structured Q&A history and remaining topics.
-        """
+        """Get combined information from all sources."""
         return {
             "transcript": self.transcript,
+            "klantprofiel": self.klantprofiel,
             "additional_info": self.additional_info,
             "missing_info": self.missing_info,
             "conversation_history": self.conversation_history,
@@ -215,14 +194,14 @@ class AppState:
         }
 
     def get_conversation_summary(self) -> str:
-        """
-        Get a formatted summary of the conversation history.
-        Useful for GPT context.
-        """
+        """Get a formatted summary of the conversation history."""
         summary_parts = []
         
+        if self.klantprofiel:
+            summary_parts.append("Klantprofiel:\n" + self.klantprofiel)
+            
         if self.transcript:
-            summary_parts.append("Oorspronkelijk transcript:\n" + self.transcript)
+            summary_parts.append("\nOorspronkelijk transcript:\n" + self.transcript)
         
         if self.structured_qa_history:
             summary_parts.append("\nAanvullende vragen en antwoorden:")
@@ -234,5 +213,30 @@ class AppState:
         return "\n".join(summary_parts)
 
     def reset(self) -> None:
-        """Reset the application state."""
+        """Reset the application state but keep active module."""
+        current_module = self.active_module
         self.__init__()
+        self.active_module = current_module
+        self.step = "input"
+
+    def switch_module(self, module: str) -> None:
+        """Switch to a different module and reset appropriate state."""
+        if module in ["hypotheek", "pensioen", "fp"]:
+            # Save current module state if needed
+            
+            # Switch module
+            self.active_module = module
+            self.step = "input"
+            
+            # Clear module-specific state
+            self.transcript = None
+            self.result = None
+            self.missing_info = None
+            self.additional_info = None
+            self.conversation_history = []
+            self.structured_qa_history = []
+            self.remaining_topics = {}
+            
+            # Reset FP state if switching to/from FP
+            if module == "fp":
+                self.fp_state = FPState()
