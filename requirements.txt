@@ -16,3 +16,4 @@ aiohttp
 typing-extensions
 groq
 PyPDF2
+ffmpeg-python
