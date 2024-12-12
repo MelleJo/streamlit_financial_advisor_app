@@ -77,7 +77,7 @@ def render_input_section(services, app_state):
     tab1, tab2, tab3 = st.tabs(["🎙️ Opnemen", "📁 Uploaden", "📝 Tekst invoeren"])
     
     with tab1:
-        st.write("Neem uw adviesgesprek op")
+        st.write("Neem je adviesgesprek op")
         audio_bytes = services['audio_service'].record_audio()
         if audio_bytes:
             with st.spinner("Audio wordt verwerkt..."):
@@ -112,10 +112,10 @@ def render_input_section(services, app_state):
     with tab3:
         st.write("Voer de tekst direct in")
         transcript = st.text_area(
-            "Plak of typ hier uw tekst:",
+            "Plak of typ hier je tekst:",
             height=300,
             key=f"text_input_{app_state.active_module}",
-            placeholder="Voer hier het transcript van uw adviesgesprek in..."
+            placeholder="Voer hier het transcript van je adviesgesprek in..."
         )
         if st.button("Analyseer", key=f"analyze_btn_{app_state.active_module}", use_container_width=True):
             process_initial_input(transcript, services, app_state)
@@ -201,13 +201,13 @@ def render_fp_module(app_state, services):
         st.markdown("""
             ### Welkom bij de Financiële Planning Module
             
-            Deze module helpt u bij het opstellen van een compleet financieel plan, inclusief:
-            - Analyse van uw huidige financiële situatie
+            Deze module helpt je bij het opstellen van een compleet financieel plan, inclusief:
+            - Analyse van je huidige financiële situatie
             - Planning voor verschillende levensfases
             - Scenario-analyses voor pensioen, overlijden en arbeidsongeschiktheid
             - Advies over vermogensopbouw en -beheer
             
-            Begin met het uploaden van uw klantprofiel en een opname van het adviesgesprek.
+            Begin met het uploaden van je klantprofiel en een opname van het adviesgesprek.
             """)
         render_input_section(services, app_state)
             
@@ -248,7 +248,7 @@ def render_fp_module(app_state, services):
                         st.plotly_chart(section_data["graphs"])
                 
                 # Audio recording for this section
-                st.markdown("### 🎙️ Neem uw adviesnotities op")
+                st.markdown("### 🎙️ Neem je adviesnotities op")
                 audio = services['audio_service'].record_audio()
                 
                 if audio:

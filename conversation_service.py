@@ -131,8 +131,8 @@ class ConversationService:
             return {
                 "complete_info": {"leningdeel": {}, "werkloosheid": {}, "aow": {}},
                 "missing_info": checklist_analysis["missing_topics"] if 'checklist_analysis' in locals() else CHECKLIST,
-                "next_question": "Kunt u mij vertellen wat het gewenste leningbedrag is?",
-                "context": "We beginnen met de basisinformatie voor uw hypotheekaanvraag."
+                "next_question": "Kun je me vertellen wat het gewenste leningbedrag is?",
+                "context": "We beginnen met de basisinformatie voor je hypotheekaanvraag."
             }
 
     def process_user_response(
@@ -180,7 +180,7 @@ class ConversationService:
                 # Handle list format
                 for missing_item in remaining_info:
                     questions.append({
-                        "question": f"Kunt u meer vertellen over {missing_item.lower()}?",
+                        "question": f"Kun je meer vertellen over {missing_item.lower()}?",
                         "context": "We hebben aanvullende informatie nodig",
                         "category": "general",
                         "topic": missing_item
@@ -208,8 +208,8 @@ class ConversationService:
             logger.error(f"Error processing response: {str(e)}")
             return {
                 "questions": [{
-                    "question": "Kunt u dat nog eens anders formuleren?",
-                    "context": "Ik begreep uw antwoord niet helemaal.",
+                    "question": "Kun je dat nog eens anders formuleren?",
+                    "context": "Ik begreep je antwoord niet helemaal.",
                     "category": "general",
                     "topic": "clarification"
                 }],
@@ -222,36 +222,36 @@ class ConversationService:
         """Generates a specific question based on the missing checklist item."""
         # First check if the category exists in CHECKLIST
         if category not in CHECKLIST:
-            return f"Kunt u meer vertellen over {missing_item.lower()}?"
+            return f"Kun je meer vertellen over {missing_item.lower()}?"
             
         questions = {
             "leningdeel": {
-                "Exacte leningbedrag met onderbouwing": "Wat is het exacte leningbedrag dat u nodig heeft en waarom?",
-                "NHG keuze en onderbouwing": "Heeft u al nagedacht over Nationale Hypotheek Garantie (NHG)?",
-                "Maandlasten berekening": "Welke maandlasten heeft u voor ogen?",
-                "Rentevaste periode met motivatie": "Welke rentevaste periode heeft uw voorkeur en waarom?",
-                "Hypotheekvorm met toelichting": "Welke hypotheekvorm spreekt u het meeste aan?",
-                "Fiscale aspecten en voordelen": "Bent u bekend met de fiscale voordelen van verschillende hypotheekvormen?"
+                "Exacte leningbedrag met onderbouwing": "Wat is het exacte leningbedrag dat je nodig hebt en waarom?",
+                "NHG keuze en onderbouwing": "Heb je al nagedacht over Nationale Hypotheek Garantie (NHG)?",
+                "Maandlasten berekening": "Welke maandlasten heb je voor ogen?",
+                "Rentevaste periode met motivatie": "Welke rentevaste periode heeft je voorkeur en waarom?",
+                "Hypotheekvorm met toelichting": "Welke hypotheekvorm spreekt je het meeste aan?",
+                "Fiscale aspecten en voordelen": "Ben je bekend met de fiscale voordelen van verschillende hypotheekvormen?"
             },
             "werkloosheid": {
-                "Huidige arbeidssituatie": "Kunt u uw huidige arbeidssituatie toelichten?",
-                "Werkloosheidsrisico analyse": "Hoe schat u het risico op werkloosheid in uw sector in?",
-                "WW-uitkering en duur": "Weet u wat uw WW-rechten zijn?",
-                "Impact op maandlasten": "Hoe zou werkloosheid uw hypotheeklasten beïnvloeden?",
-                "Verzekeringswensen en dekking": "Heeft u gedacht aan een werkloosheidsverzekering?"
+                "Huidige arbeidssituatie": "Kun je je huidige arbeidssituatie toelichten?",
+                "Werkloosheidsrisico analyse": "Hoe schat je het risico op werkloosheid in je sector in?",
+                "WW-uitkering en duur": "Weet je wat je WW-rechten zijn?",
+                "Impact op maandlasten": "Hoe zou werkloosheid je hypotheeklasten beïnvloeden?",
+                "Verzekeringswensen en dekking": "Heb je gedacht aan een werkloosheidsverzekering?"
             },
             "aow": {
-                "AOW-leeftijd en planning": "Weet u wanneer u AOW gaat ontvangen?",
-                "Hypotheeksituatie bij pensionering": "Hoe ziet u uw hypotheek voor zich als u met pensioen gaat?",
-                "Pensioeninkomen en opbouw": "Hoe bouwt u pensioen op?",
-                "Toekomstperspectief na AOW": "Wat zijn uw plannen voor na uw pensionering?",
-                "Vermogensplanning": "Heeft u al nagedacht over vermogensopbouw voor later?"
+                "AOW-leeftijd en planning": "Weet je wanneer je AOW gaat ontvangen?",
+                "Hypotheeksituatie bij pensionering": "Hoe zie je je hypotheek voor je als je met pensioen gaat?",
+                "Pensioeninkomen en opbouw": "Hoe bouw je pensioen op?",
+                "Toekomstperspectief na AOW": "Wat zijn je plannen voor na je pensionering?",
+                "Vermogensplanning": "Heb je al nagedacht over vermogensopbouw voor later?"
             }
         }
         
         return questions.get(category, {}).get(
             missing_item, 
-            f"Kunt u meer vertellen over {missing_item.lower()}?"
+            f"Kun je meer vertellen over {missing_item.lower()}?"
         )
 
     @staticmethod

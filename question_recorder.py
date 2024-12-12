@@ -111,11 +111,11 @@ def render_question_recorder(
                 """, unsafe_allow_html=True)
             
             # Single recording section for all questions
-            st.markdown("### 🎙️ Neem uw antwoord op")
+            st.markdown("### 🎙️ Neem je antwoord op")
             st.markdown("""
                 <div class="recording-controls">
-                    <p>Beantwoord alstublieft alle bovenstaande vragen in uw opname. 
-                    U kunt ze één voor één behandelen of in een doorlopend antwoord.</p>
+                    <p>Beantwoord alsjeblieft alle bovenstaande vragen in je opname. 
+                    Je kunt ze één voor één behandelen of in een doorlopend antwoord.</p>
                 </div>
             """, unsafe_allow_html=True)
             

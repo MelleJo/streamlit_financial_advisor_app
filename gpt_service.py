@@ -206,8 +206,8 @@ class GPTService:
         return {
             "missing_info": CHECKLIST,
             "explanation": "Transcript bevat onvoldoende informatie voor analyse",
-            "next_question": "Kunt u mij vertellen wat het gewenste leningbedrag is?",
-            "context": "We beginnen met de basisinformatie voor uw hypotheekaanvraag."
+            "next_question": "Kun je me vertellen wat het gewenste leningbedrag is?",
+            "context": "We beginnen met de basisinformatie voor je hypotheekaanvraag."
         }
 
     def _get_default_sections(self) -> Dict[str, str]:
