@@ -187,22 +187,10 @@ def render_pensioen_module(app_state, services):
     st.markdown("""
         ### Module in ontwikkeling
         
-        De Pensioen Adviseur module is momenteel in ontwikkeling. Hier komt binnenkort:
         
-        - Geautomatiseerde pensioenanalyse
-        - Berekening van uw pensioengat
-        - Scenario analyses voor verschillende pensioenleeftijden
-        - Advies over aanvullende pensioenopbouw
-        - Integratie met bestaande pensioenvoorzieningen
-        
-        We werken hard om deze functionaliteit zo snel mogelijk beschikbaar te maken.
         
         *Gebruik voorlopig de Hypotheek Adviseur of Financiële Planning modules.*
         """)
-    
-    # Progress indicator
-    st.progress(0.4)
-    st.caption("🔨 Module gereed: 40%")
 
 def render_fp_module(app_state, services):
     """Render the Financial Planning module interface."""
