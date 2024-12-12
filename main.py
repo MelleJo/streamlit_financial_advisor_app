@@ -149,6 +149,8 @@ def handle_questions_skip(app_state):
 
 def render_hypotheek_module(app_state, services):
     """Render the Hypotheek module interface."""
+    st.title("Hypotheek Adviseur 🏠")
+    
     if app_state.step == "input":
         render_input_section(services, app_state)
     elif app_state.step == "additional_questions":
@@ -174,35 +176,117 @@ def render_hypotheek_module(app_state, services):
 
 def render_pensioen_module(app_state, services):
     """Render the Pensioen module interface."""
-    if app_state.step == "input":
-        render_input_section(services, app_state)
-    elif app_state.step == "additional_questions":
-        with st.expander("📝 Oorspronkelijk transcript"):
-            st.write(app_state.transcript)
-        render_question_recorder(
-            services['transcription_service'],
-            services['checklist_service'],
-            lambda answers: handle_questions_complete(answers, app_state),
-            lambda: handle_questions_skip(app_state),
-            app_state.transcript
-        )
-    elif app_state.step == "results":
-        if not app_state.result:
-            with st.spinner("Eindrapport wordt gegenereerd..."):
-                result = services['gpt_service'].analyze_transcript(
-                    app_state.transcript,
-                    app_state
-                )
-                if result:
-                    app_state.set_result(result)
-        ui.render_results(app_state)
+    st.title("Pensioen Adviseur 💰")
+    
+    # Temporary "under construction" message
+    st.markdown("""
+        ### Module in ontwikkeling
+        
+        De Pensioen Adviseur module is momenteel in ontwikkeling. Hier komt binnenkort:
+        
+        - Geautomatiseerde pensioenanalyse
+        - Berekening van uw pensioengat
+        - Scenario analyses voor verschillende pensioenleeftijden
+        - Advies over aanvullende pensioenopbouw
+        - Integratie met bestaande pensioenvoorzieningen
+        
+        We werken hard om deze functionaliteit zo snel mogelijk beschikbaar te maken.
+        
+        *Gebruik voorlopig de Hypotheek Adviseur of Financiële Planning modules.*
+        """)
+    
+    # Progress indicator
+    st.progress(0.4)
+    st.caption("🔨 Module gereed: 40%")
 
 def render_fp_module(app_state, services):
     """Render the Financial Planning module interface."""
+    st.title("Financiële Planning Adviseur 📋")
+    
     if app_state.step == "input":
+        # Introduction text specific to FP
+        st.markdown("""
+            ### Welkom bij de Financiële Planning Module
+            
+            Deze module helpt u bij het opstellen van een compleet financieel plan, inclusief:
+            - Analyse van uw huidige financiële situatie
+            - Planning voor verschillende levensfases
+            - Scenario-analyses voor pensioen, overlijden en arbeidsongeschiktheid
+            - Advies over vermogensopbouw en -beheer
+            
+            Begin met het uploaden van uw klantprofiel en een opname van het adviesgesprek.
+            """)
         render_input_section(services, app_state)
+            
     elif app_state.step == "fp_sections":
-        ui.render_fp_report(app_state, services)
+        # Show progress of FP report
+        progress = app_state.fp_state.get_progress()
+        st.progress(progress / 100)
+        st.write(f"Rapport voortgang: {progress:.0f}%")
+        
+        # Section selection
+        sections = {
+            "Samenvatting": ("samenvatting", "📋"),
+            "Uitwerking Advies": ("uitwerking_advies", "📊"),
+            "Huidige Situatie": ("huidige_situatie", "📈"),
+            "Situatie Later": ("situatie_later", "🎯"),
+            "Situatie Overlijden": ("situatie_overlijden", "💼"),
+            "Situatie Arbeidsongeschiktheid": ("situatie_arbeidsongeschiktheid", "🏥"),
+            "Erven en Schenken": ("erven_schenken", "🎁"),
+            "Actiepunten": ("actiepunten", "✅")
+        }
+        
+        # Display original transcript in expander
+        with st.expander("📝 Oorspronkelijk transcript", expanded=False):
+            st.write(app_state.transcript)
+        
+        # Section tabs
+        tabs = st.tabs([f"{icon} {name}" for name, (key, icon) in sections.items()])
+        
+        for idx, (section_name, (section_key, icon)) in enumerate(sections.items()):
+            with tabs[idx]:
+                st.subheader(f"{icon} {section_name}")
+                
+                # Show current section content if it exists
+                section_data = getattr(app_state.fp_state, section_key, None)
+                if section_data and section_data.get("content"):
+                    st.write(section_data["content"])
+                    if section_data.get("graphs"):
+                        st.plotly_chart(section_data["graphs"])
+                
+                # Audio recording for this section
+                st.markdown("### 🎙️ Neem uw adviesnotities op")
+                audio = services['audio_service'].record_audio()
+                
+                if audio:
+                    with st.spinner("Audio wordt verwerkt..."):
+                        result = services['fp_service'].process_advisor_recording(
+                            audio['bytes'],
+                            section_key
+                        )
+                        if result:
+                            app_state.fp_state.update_section(section_key, result)
+                            st.success(f"Sectie {section_name} is bijgewerkt!")
+                            st.rerun()
+        
+        # Generate final report button
+        if app_state.fp_state.is_complete():
+            if st.button("Genereer Eindrapport", use_container_width=True):
+                app_state.set_step("fp_report")
+                st.rerun()
+                
+    elif app_state.step == "fp_report":
+        report_data = services['fp_service'].generate_fp_report(app_state)
+        
+        # Export options
+        st.markdown("### 📑 Export Opties")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Download als PDF", use_container_width=True):
+                ui.export_to_pdf(report_data)
+        with col2:
+            if st.button("Download als Word", use_container_width=True):
+                ui.export_to_docx(report_data)
 
 def main():
     """Main application flow."""
