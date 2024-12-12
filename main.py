@@ -17,7 +17,7 @@ from fp_components import (
     render_fp_header, render_progress_bar, render_samenvatting,
     render_situation_comparison, render_action_points
 )
-from fp_service import FPService
+from .fp_service import FPService
 
 def initialize_services():
     """Initialize all required services."""
