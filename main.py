@@ -13,6 +13,8 @@ from fp_service import FPService
 from fp_analysis_service import FPAnalysisService
 from fp_report_service import FPReportService
 import fp_ui_components as fp_ui
+import logging
+import json
 
 # Initialize logger
 logging.basicConfig(level=logging.INFO)
