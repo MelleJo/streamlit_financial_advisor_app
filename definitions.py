@@ -175,34 +175,45 @@ Kenmerken:
 }
 
 def improve_explanation(term: str, base_uitleg: str, originele_tekst: str, client) -> str:
-    """Improves the explanation by integrating basic definitions into the original text."""
+    """Improves the explanation by naturally integrating definitions into the text."""
     try:
         if not client:
             return originele_tekst
 
-        prompt = f"""Je bent een ervaren financieel adviseur. Verbeter deze hypotheekadvies tekst door een duidelijke uitleg over {term} toe te voegen.
+        prompt = f"""Je bent een ervaren financieel adviseur die een hypotheekadvies verbetert. 
+Integreer extra uitleg over {term} op een natuurlijke manier in de bestaande tekst.
 
-BASISUITLEG:
+EXTRA INFORMATIE OVER {term}:
 {base_uitleg}
 
 HUIDIGE TEKST:
 {originele_tekst}
 
 INSTRUCTIES:
-1. Behoud ALLE bestaande informatie
-2. Voeg de uitleg over {term} op een logische plek toe
-3. Zorg voor vloeiende overgangen
-4. Gebruik professionele maar begrijpelijke taal
-5. Maak de relatie met de klantsituatie duidelijk"""
+1. Integreer de uitleg vloeiend in de bestaande tekst
+2. Behoud ALLE informatie uit de huidige tekst
+3. Verwijder alle kopjes zoals 'BASISUITLEG' of 'UITGEBREIDE UITLEG'
+4. Maak de tekst een doorlopend geheel
+5. Gebruik concrete voorbeelden uit de klantsituatie
+6. Vermijd verwijzingen naar toekomstige gesprekken
+7. Maak duidelijke verbanden tussen de uitleg en de specifieke situatie van de klant
+
+Geef alleen de verbeterde, complete tekst terug zonder extra kopjes of secties."""
 
         response = client.chat.completions.create(
-            model="gpt-4-1106-preview",
+            model="gpt-4o",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7
         )
         
         result = response.choices[0].message.content
-        return result if result else originele_tekst
+        
+        # Clean up any remaining headers or separators
+        cleaned_result = result.replace("HUIDIGE TEKST MET TOEGEVOEGDE UITLEG:", "").strip()
+        cleaned_result = cleaned_result.replace("BASISUITLEG:", "").strip()
+        cleaned_result = cleaned_result.replace("UITGEBREIDE UITLEG:", "").strip()
+        
+        return cleaned_result if cleaned_result else originele_tekst
 
     except Exception as e:
         logging.error(f"Error improving explanation: {str(e)}")
