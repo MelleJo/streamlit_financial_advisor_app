@@ -530,6 +530,7 @@ Een vervolgafspraak wordt ingepland om bovenstaande punten te bespreken en een v
             enhanced_sections[section] = "\n\n".join(part.strip() for part in enhanced_content if part and part.strip())
 
         return enhanced_sections
+    
     def _get_default_missing_info(self) -> Dict[str, Any]:
         """Returns structured missing information response."""
         return {
@@ -555,3 +556,41 @@ Een vervolgafspraak wordt ingepland om bovenstaande punten te bespreken en een v
             "next_question": "Wat is het gewenste leningbedrag voor de hypotheek en wat zijn uw overwegingen hierbij?",
             "context": "We beginnen met de belangrijkste uitgangspunten voor uw hypotheekadvies."
         }
+    def _get_missing_information_notice(self, section: str, app_state: Optional['AppState']) -> Optional[str]:
+        """Generates professional notice about missing information for a section."""
+        section_mapping = {
+            "adviesmotivatie_leningdeel": "leningdeel",
+            "adviesmotivatie_werkloosheid": "werkloosheid",
+            "adviesmotivatie_aow": "aow"
+        }
+        
+        section_key = section_mapping.get(section)
+        if not section_key:
+            return None
+
+        # Get missing items from app state
+        if not app_state or not hasattr(app_state, 'missing_info') or not app_state.missing_info:
+            return None
+            
+        missing_items = app_state.missing_info.get(section_key, [])
+        if not missing_items:
+            return None
+
+        section_titles = {
+            "leningdeel": "hypothecaire financiering",
+            "werkloosheid": "werkloosheidsscenario",
+            "aow": "pensioen- en AOW-situatie"
+        }
+
+        # Create professional notice
+        notice = f"\nOntbrekende informatie voor {section_titles.get(section_key, section_key)}:"
+        for item in missing_items:
+            notice += f"\n• {item}"
+
+        notice += """
+
+    Voor een compleet advies is het essentieel dat we bovenstaande punten in detail bespreken. 
+    Dit stelt ons in staat een op maat gemaakt advies te formuleren dat optimaal aansluit bij uw situatie.
+    Een vervolgafspraak wordt ingepland om deze aspecten te behandelen."""
+
+        return notice
