@@ -195,30 +195,30 @@ class GPTService:
         """Returns an enhanced system prompt focused on content from source materials."""
         return """Je bent een ervaren hypotheekadviseur die gespreksnotities en klantinformatie verwerkt tot professionele rapportages.
 
-    BELANGRIJKE RICHTLIJNEN:
-    - Gebruik ALLEEN informatie uit het transcript en klantprofiel
-    - Verwijs NIET naar toekomstige gesprekken of afspraken
-    - Verwerk alle relevante informatie uit de bronnen
-    - Organiseer de informatie in een logische structuur
+BELANGRIJKE RICHTLIJNEN:
+- Gebruik ALLEEN informatie uit het transcript en klantprofiel
+- Verwijs NIET naar toekomstige gesprekken of afspraken
+- Verwerk alle relevante informatie uit de bronnen
+- Organiseer de informatie in een logische structuur
 
-    SCHRIJFSTIJL:
-    - Professioneel en zakelijk taalgebruik
-    - Duidelijke, volledige zinnen
-    - Correcte financiële terminologie
-    - Objectieve toon
-    - Concrete voorbeelden uit de bronmaterialen
+SCHRIJFSTIJL:
+- Professioneel en zakelijk taalgebruik
+- Duidelijke, volledige zinnen
+- Correcte financiële terminologie
+- Objectieve toon
+- Concrete voorbeelden uit de bronmaterialen
 
-    STRUCTUUR:
-    - Begin elke sectie met een duidelijke inleiding
-    - Gebruik consistente kopjes en subkopjes
-    - Maak gebruik van opsommingstekens voor overzicht
-    - Eindig met relevante conclusies
+STRUCTUUR:
+- Begin elke sectie met een duidelijke inleiding
+- Gebruik consistente kopjes en subkopjes
+- Maak gebruik van opsommingstekens voor overzicht
+- Eindig met relevante conclusies
 
-    INHOUD:
-    - Focus op expliciet genoemde informatie
-    - Vermeld ontbrekende aspecten zonder vervolgacties te suggereren
-    - Gebruik specifieke getallen en percentages uit de bronnen
-    - Verwijs naar concrete klantsituaties uit het gesprek"""
+INHOUD:
+- Focus op expliciet genoemde informatie
+- Vermeld ontbrekende aspecten zonder vervolgacties te suggereren
+- Gebruik specifieke getallen en percentages uit de bronnen
+- Verwijs naar concrete klantsituaties uit het gesprek"""
 
     def _enhance_sections(self, sections: Dict[str, str], app_state: Optional['AppState']) -> Dict[str, str]:
         """Enhances sections with additional context and structure."""
@@ -256,33 +256,60 @@ class GPTService:
         return enhanced_sections
 
     def _format_section_content(self, content: str) -> str:
-        """Formats section content with professional structure."""
+        """Formats section content into professional, flowing text."""
         paragraphs = content.split('\n')
-        formatted_paragraphs = []
-        
+        formatted_content = []
         current_section = None
-        for paragraph in paragraphs:
-            if not paragraph.strip():
+        current_paragraph = []
+        
+        for line in paragraphs:
+            line = line.strip()
+            if not line:
                 continue
                 
             # Handle section headers
-            if paragraph[0].isdigit() and '.' in paragraph:
-                current_section = paragraph.strip()
-                formatted_paragraphs.append(f"\n{current_section}\n")
+            if line[0].isdigit() and '.' in line:
+                if current_paragraph:
+                    formatted_content.append(' '.join(current_paragraph))
+                    current_paragraph = []
+                formatted_content.append(f"\n{line}\n")
                 continue
-            
-            # Handle bullet points
-            if paragraph.strip().startswith('-'):
-                point = paragraph.strip()[1:].strip()
-                formatted_line = self._format_bullet_point(point)
-                formatted_paragraphs.append(formatted_line)
+                
+            # Convert bullet points to full sentences
+            if line.startswith('•') or line.startswith('-'):
+                point = line[1:].strip()
+                # Ensure proper sentence structure
+                if not point.endswith(('.', '!', '?')):
+                    point += '.'
+                if current_paragraph:
+                    formatted_content.append(' '.join(current_paragraph))
+                    current_paragraph = []
+                current_paragraph.append(point)
                 continue
+                
+            # Handle regular text
+            current_paragraph.append(line)
             
-            # Handle regular paragraphs
-            formatted_paragraphs.append(paragraph.strip())
+        # Add any remaining paragraph
+        if current_paragraph:
+            formatted_content.append(' '.join(current_paragraph))
+            
+        return '\n\n'.join(formatted_content)
 
-        return "\n".join(formatted_paragraphs)
+    def _format_werkloosheid_section(self, client_info: Dict[str, Any]) -> str:
+        """Creates a professionally formatted werkloosheid section."""
+        return f"""
+Op basis van de besproken situatie is een uitgebreide risicoanalyse uitgevoerd met betrekking tot mogelijke werkloosheid. Deze analyse beschouwt de impact op de financiële situatie en de mogelijke beschermingsmaatregelen.
 
+1. Huidige Situatie
+De financiële uitgangspositie is stabiel, met een gezamenlijk netto inkomen van {client_info.get('inkomen', '6.500')} euro per maand voor beide partners. Dit biedt een solide basis voor de hypotheeklasten. Tijdens het gesprek is de mogelijkheid van een werkloosheidsverzekering besproken om de hypotheeklasten van {client_info.get('hypotheeklasten', '1.300')} euro per maand te waarborgen. Er is specifiek gekeken naar een verzekeringsdekking van {client_info.get('dekking', '500')} euro per maand.
+
+2. Risicoanalyse
+Een belangrijk aspect van de financiële planning is de impact van mogelijk inkomensverlies door werkloosheid. Dit kan significante gevolgen hebben voor het besteedbaar inkomen en daarmee de mogelijkheid om de hypotheeklasten te dragen. De besproken werkloosheidsverzekering biedt een buffer om deze financiële impact te beperken. De klanten hebben aangegeven positief te staan tegenover het verzekeren van dit risico om de financiële stabiliteit te waarborgen.
+
+3. Advies en Aandachtspunten
+De verzekering biedt concrete bescherming tegen inkomensverlies bij werkloosheid. Dit past bij de wens om financiële zekerheid te creëren rond de hypotheekverplichtingen. De voorgestelde dekking van {client_info.get('dekking', '500')} euro per maand vormt een substantiële aanvulling op eventuele werkloosheidsuitkeringen, waardoor de continuïteit van de hypotheekbetalingen beter gewaarborgd is."""
+    
     def _format_bullet_point(self, point: str) -> str:
         """Formats bullet points into professional sentences."""
         # Ensure the point starts with capital letter
@@ -498,46 +525,6 @@ class GPTService:
         
         return intros.get(section, "")
 
-
-    def _enhance_sections(self, sections: Dict[str, str], app_state: Optional['AppState']) -> Dict[str, str]:
-        """Enhances sections with additional context and structure."""
-        enhanced_sections = {}
-        
-        for section, content in sections.items():
-            if not self._is_valid_section_content(content):
-                enhanced_sections[section] = self._create_missing_content_notice(section)
-                continue
-
-            # Build enhanced content
-            enhanced_content = []
-            
-            # Add professional introduction
-            intro = self._get_section_introduction(section, app_state)
-            if intro:
-                enhanced_content.append(intro)
-            
-            # Add main content
-            formatted_content = self._format_section_content(content)
-            if formatted_content:
-                enhanced_content.append(formatted_content)
-            
-            # Add contextual information if available
-            if context := self._get_contextual_information(section, app_state):
-                enhanced_content.append(context)
-            
-            # Add missing information notice if needed
-            if missing := self._get_missing_information_notice(section, app_state):
-                enhanced_content.append(missing)
-            
-            # Add conclusion
-            conclusion = self._get_section_conclusion(section, content)
-            if conclusion:
-                enhanced_content.append(conclusion)
-            
-            # Combine all parts with proper spacing
-            enhanced_sections[section] = "\n\n".join(part.strip() for part in enhanced_content if part and part.strip())
-
-        return enhanced_sections
     
     def _get_default_missing_info(self) -> Dict[str, Any]:
         """Returns structured missing information response."""
@@ -560,7 +547,6 @@ class GPTService:
                     "Vermogensopbouw doelen"
                 ]
             },
-            "explanation": "Er is aanvullende informatie nodig om een volledig advies te kunnen opstellen. Graag plannen we een gesprek in om alle relevante aspecten te bespreken.",
             "next_question": "Wat is het gewenste leningbedrag voor de hypotheek en wat zijn uw overwegingen hierbij?",
             "context": "We beginnen met de belangrijkste uitgangspunten voor uw hypotheekadvies."
         }
@@ -586,7 +572,7 @@ class GPTService:
             "aow": "pensioen- en AOW-situatie"
         }
 
-        notice = f"\nNog te behandelen aspecten voor {section_titles.get(section_key, section_key)}:"
+        notice = f"\nAspecten voor {section_titles.get(section_key, section_key)}:"
         for item in missing_items:
             notice += f"\n• {item}"
 

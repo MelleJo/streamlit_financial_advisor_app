@@ -94,55 +94,47 @@ def render_qa_history(qa_history, section):
     
     st.markdown("</div>", unsafe_allow_html=True)
 
-def render_standard_explanations(section: str, current_content: str):
+def render_standard_explanations(section: str, current_content: str) -> str:
+    """Renders standard explanation options with proper state handling."""
     standard_explanations = {
-        "adviesmotivatie_leningdeel": [
-            "Hypotheekvormen",
-            "Rentevaste periodes",
-            "NHG-voorwaarden",
-            "Maandlasten berekening"
-        ],
-        "adviesmotivatie_werkloosheid": [
-            "WW-uitkering",
-            "Woonlastenverzekering",
-            "Werkloosheidsrisico's",
-            "Financiële buffer"
-        ],
-        "adviesmotivatie_aow": [
-            "Pensioenopbouw",
-            "AOW-leeftijd",
-            "Hypotheek na pensionering",
-            "Vermogensplanning"
-        ]
+        "adviesmotivatie_leningdeel": {
+            "Hypotheekvormen": "hypotheekvormen",
+            "NHG-voorwaarden": "nhg",
+            "Rentevaste periodes": "rentevaste_periode",
+            "Maandlasten berekening": "maandlasten"
+        }
     }
 
     if section not in standard_explanations:
         return current_content
 
-    st.markdown("""
-        <div class="standard-explanations">
-            <h4>Voeg standaard uitleg toe:</h4>
-        </div>
-    """, unsafe_allow_html=True)
+    explanation_options = standard_explanations[section]
     
+    col1, col2 = st.columns(2)
     updated_content = current_content
-    cols = st.columns(2)
-    for idx, explanation in enumerate(standard_explanations[section]):
-        with cols[idx % 2]:
-            if st.button(
-                f"➕ {explanation}",
-                key=f"{section}_exp_{idx}",
-                use_container_width=True
-            ):
-                explanation_text = MORTGAGE_DEFINITIONS.get(explanation.lower(), "")
-                if explanation_text:
-                    with st.spinner(f"Uitleg over {explanation} wordt toegevoegd..."):
-                        updated_content = improve_explanation(
-                            explanation,
-                            explanation_text,
-                            current_content,
-                            st.session_state.get('openai_client')
-                        )
+    
+    for idx, (label, key) in enumerate(explanation_options.items()):
+        with col1 if idx % 2 == 0 else col2:
+            if st.button(f"➕ {label}", key=f"{section}_{key}_btn"):
+                try:
+                    # Get the definition from the mortgage definitions
+                    definition = MORTGAGE_DEFINITIONS.get(key, "")
+                    if definition:
+                        # Generate improved text with OpenAI
+                        with st.spinner(f"Voeg {label} uitleg toe..."):
+                            updated_content = improve_explanation(
+                                label, 
+                                definition,
+                                updated_content,
+                                st.session_state.get('openai_client')
+                            )
+                            if updated_content:
+                                # Store in session state to persist
+                                st.session_state[f"{section}_content"] = updated_content
+                                return updated_content
+                except Exception as e:
+                    st.error(f"Fout bij toevoegen van uitleg: {str(e)}")
+    
     return updated_content
 
 def render_results(app_state):
