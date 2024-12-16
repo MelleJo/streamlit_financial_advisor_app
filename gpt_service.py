@@ -490,6 +490,46 @@ Een vervolgafspraak wordt ingepland om bovenstaande punten te bespreken en een v
         
         return intros.get(section, "")
 
+
+    def _enhance_sections(self, sections: Dict[str, str], app_state: Optional['AppState']) -> Dict[str, str]:
+        """Enhances sections with additional context and structure."""
+        enhanced_sections = {}
+        
+        for section, content in sections.items():
+            if not self._is_valid_section_content(content):
+                enhanced_sections[section] = self._create_missing_content_notice(section)
+                continue
+
+            # Build enhanced content
+            enhanced_content = []
+            
+            # Add professional introduction
+            intro = self._get_section_introduction(section, app_state)
+            if intro:
+                enhanced_content.append(intro)
+            
+            # Add main content
+            formatted_content = self._format_section_content(content)
+            if formatted_content:
+                enhanced_content.append(formatted_content)
+            
+            # Add contextual information if available
+            if context := self._get_contextual_information(section, app_state):
+                enhanced_content.append(context)
+            
+            # Add missing information notice if needed
+            if missing := self._get_missing_information_notice(section, app_state):
+                enhanced_content.append(missing)
+            
+            # Add conclusion
+            conclusion = self._get_section_conclusion(section, content)
+            if conclusion:
+                enhanced_content.append(conclusion)
+            
+            # Combine all parts with proper spacing
+            enhanced_sections[section] = "\n\n".join(part.strip() for part in enhanced_content if part and part.strip())
+
+        return enhanced_sections
     def _get_default_missing_info(self) -> Dict[str, Any]:
         """Returns structured missing information response."""
         return {
