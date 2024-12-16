@@ -67,10 +67,35 @@ class GPTService:
             logger.error(f"Error in initial analysis: {str(e)}")
             return self._get_default_missing_info()
 
+    def _is_valid_section_content(self, content: str) -> bool:
+        """Validates if section content is meaningful and not just placeholder text."""
+        if not content or len(content.strip()) < 10:
+            return False
+            
+        # Check for actual content vs. placeholder patterns
+        placeholder_patterns = [
+            "Geen informatie beschikbaar",
+            "Informatie ontbreekt",
+            "Nog te analyseren",
+            "Onvoldoende informatie"
+        ]
+        
+        content_lower = content.lower()
+        if any(pattern.lower() in content_lower for pattern in placeholder_patterns):
+            return False
+            
+        # Check for minimum structure (should have at least one heading and some content)
+        lines = [line.strip() for line in content.split('\n') if line.strip()]
+        if len(lines) < 3:  # Need at least a heading and some content
+            return False
+            
+        return True
+    
     def analyze_transcript(self, transcript: str, app_state: Optional['AppState'] = None) -> Dict[str, str]:
         """Analyzes the transcript and additional information to generate advice."""
         try:
             if not transcript:
+                logger.error("Empty transcript provided")
                 return self._get_default_sections()
 
             if not self.prompt_template:
@@ -93,32 +118,38 @@ class GPTService:
                 missing_info=json.dumps(checklist_analysis["missing_topics"], ensure_ascii=False)
             )
 
-            prompt = ChatPromptTemplate.from_messages([
+            # Create system and user messages
+            messages = [
                 SystemMessage(content="""Je bent een ervaren hypotheekadviseur die gespecialiseerd is in het analyseren 
                 van klantgesprekken en het opstellen van uitgebreide adviesrapporten.
                 
                 Gebruik de checklist om te controleren of alle belangrijke onderwerpen zijn behandeld.
                 Identificeer eventuele ontbrekende informatie en geef duidelijk aan wat er nog besproken moet worden.
                 
-                Baseer je advies ALLEEN op expliciet genoemde informatie uit het transcript en de aanvullende gesprekken."""),
+                Baseer je advies ALLEEN op expliciet genoemde informatie uit het transcript en de aanvullende gesprekken.
+                
+                BELANGRIJK: Geef alleen informatie die specifiek in het transcript of de aanvullende gesprekken is genoemd.
+                Als informatie ontbreekt, geef dit expliciet aan maar vul het NIET aan met standaardteksten."""),
                 HumanMessage(content=formatted_prompt)
-            ])
+            ]
 
-            messages = prompt.format_messages()
             response = self.llm.invoke(messages)
-            
             content = response.content.strip()
-            logger.info(f"Analysis response: {content}")
             
-            # Check if response contains required tags
-            if not all(tag in content for tag in ['<adviesmotivatie_leningdeel>', '<adviesmotivatie_werkloosheid>', '<adviesmotivatie_aow>']):
+            # Validate required XML tags are present
+            required_tags = [
+                '<adviesmotivatie_leningdeel>',
+                '<adviesmotivatie_werkloosheid>',
+                '<adviesmotivatie_aow>'
+            ]
+            
+            if not all(tag in content for tag in required_tags):
                 logger.error("Response missing required tags")
-                return self._get_default_sections()
-
-            sections = self._parse_sections(content)
+                return self._parse_sections(self._add_missing_sections(content))
             
-            # Add missing information warnings to each section
-            sections = self._add_missing_info_warnings(sections, checklist_analysis["missing_topics"])
+            # Parse sections and validate content
+            sections = self._parse_sections(content)
+            sections = self._validate_sections(sections, checklist_analysis["missing_topics"])
             
             return sections
             
@@ -147,7 +178,7 @@ class GPTService:
             return "Error bij verwerken aanvullende informatie."
 
     def _parse_sections(self, content: str) -> Dict[str, str]:
-        """Parses content into sections with error handling."""
+        """Parses content into sections with improved validation."""
         sections = {
             "adviesmotivatie_leningdeel": "",
             "adviesmotivatie_werkloosheid": "",
@@ -168,21 +199,71 @@ class GPTService:
                     current_content = []
                 elif line.startswith('</adviesmotivatie_'):
                     if current_section in sections:
-                        sections[current_section] = '\n'.join(current_content)
+                        section_content = '\n'.join(current_content)
+                        if self._is_valid_section_content(section_content):
+                            sections[current_section] = section_content
+                        else:
+                            sections[current_section] = self._create_missing_content_notice(current_section)
                     current_section = None
                 elif current_section:
                     current_content.append(line)
 
-            # Validate sections
-            for section, content in sections.items():
-                if not content.strip():
-                    sections[section] = self._get_default_section_content(section)
-                    
             return sections
-            
+                
         except Exception as e:
             logger.error(f"Error parsing sections: {str(e)}")
             return self._get_default_sections()
+
+
+    def _create_missing_content_notice(self, section: str) -> str:
+        """Creates a clear notice about missing information without placeholder content."""
+        section_names = {
+            "adviesmotivatie_leningdeel": "het leningdeel",
+            "adviesmotivatie_werkloosheid": "werkloosheid",
+            "adviesmotivatie_aow": "AOW en pensioen"
+        }
+        
+        section_name = section_names.get(section, section)
+        
+        return f"""1. Ontbrekende Informatie
+        
+    Er is in het gesprek geen concrete informatie besproken over {section_name}. 
+    Een vervolgsgesprek is nodig om de volgende aspecten te bespreken:
+
+    2. Benodigde Informatie
+    - Specifieke wensen en voorkeuren
+    - Concrete situatie en plannen
+    - Risico's en mogelijke oplossingen
+
+    3. Advies
+    Een volledig advies kan worden opgesteld nadat bovenstaande informatie is besproken tijdens een vervolgafspraak."""
+
+
+    def _validate_sections(self, sections: Dict[str, str], missing_info: Dict[str, list]) -> Dict[str, str]:
+        """Validates and enhances sections with missing information warnings."""
+        section_mapping = {
+            "adviesmotivatie_leningdeel": "leningdeel",
+            "adviesmotivatie_werkloosheid": "werkloosheid",
+            "adviesmotivatie_aow": "aow"
+        }
+        
+        validated_sections = {}
+        
+        for section, content in sections.items():
+            checklist_key = section_mapping.get(section)
+            
+            if not self._is_valid_section_content(content):
+                validated_sections[section] = self._create_missing_content_notice(section)
+            else:
+                validated_sections[section] = content
+                
+            # Add missing information warnings if applicable
+            if checklist_key and checklist_key in missing_info and missing_info[checklist_key]:
+                warning = "\n\nNOG TE BESPREKEN:\n"
+                warning += "\n".join(f"- {item}" for item in missing_info[checklist_key])
+                validated_sections[section] = validated_sections[section] + warning
+        
+        return validated_sections
 
     def _add_missing_info_warnings(self, sections: Dict[str, str], missing_info: Dict[str, list]) -> Dict[str, str]:
         """Adds warnings about missing information to each section."""
@@ -201,6 +282,7 @@ class GPTService:
         
         return sections
 
+    
     def _get_default_missing_info(self) -> Dict[str, Any]:
         """Returns default missing information structure."""
         return {
