@@ -1,8 +1,4 @@
-"""
-File: main.py
-Main application file for the Veldhuis Advies Assistant.
-"""
-
+import logging
 import streamlit as st
 from streamlit_option_menu import option_menu
 from transcription_service import TranscriptionService
@@ -17,6 +13,10 @@ from fp_service import FPService
 from fp_analysis_service import FPAnalysisService
 from fp_report_service import FPReportService
 import fp_ui_components as fp_ui
+
+# Initialize logger
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def initialize_services():
     """Initialize all required services."""
