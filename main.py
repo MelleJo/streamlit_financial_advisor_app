@@ -132,24 +132,47 @@ def render_input_section(services, app_state):
 
 def process_initial_input(transcript, services, app_state):
     """Process the initial input and determine next steps."""
-    if transcript:
-        app_state.set_transcript(transcript)
-        
-        with st.spinner("Transcript wordt geanalyseerd..."):
-            if app_state.active_module == "fp":
-                analysis = services['fp_service'].analyze_transcript(transcript)
-                app_state.fp_state.update_section("samenvatting", analysis)
-                app_state.set_step("fp_sections")
+    if not transcript or not transcript.strip():
+        st.error("Geen transcript beschikbaar om te analyseren")
+        return
+
+    app_state.set_transcript(transcript)
+    
+    with st.spinner("Transcript wordt geanalyseerd..."):
+        if app_state.active_module == "fp":
+            analysis = services['fp_service'].analyze_transcript(transcript)
+            app_state.fp_state.update_section("samenvatting", analysis)
+            app_state.set_step("fp_sections")
+        else:
+            # Log the transcript for debugging
+            logger.info(f"Processing transcript: {transcript[:100]}...")  # First 100 chars
+            
+            # Analyze using GPT service
+            analysis = services['gpt_service'].analyze_initial_transcript(transcript)
+            
+            if not analysis:
+                st.error("Fout bij het analyseren van het transcript")
+                return
+                
+            # Log analysis result
+            logger.info(f"Analysis result: {json.dumps(analysis, ensure_ascii=False)[:200]}...")
+            
+            # Update app state with analysis results
+            app_state.set_missing_info(analysis.get('missing_info', {}))
+            
+            # Determine next step based on analysis
+            if not any(analysis.get('missing_info', {}).values()):
+                app_state.set_analysis_complete(True)
+                app_state.set_step("results")
+                
+                # Generate initial results
+                result = services['gpt_service'].analyze_transcript(transcript, app_state)
+                if result:
+                    app_state.set_result(result)
             else:
-                analysis = services['gpt_service'].analyze_initial_transcript(transcript)
-                if analysis:
-                    app_state.set_missing_info(analysis.get('missing_info', {}))
-                    if not any(analysis['missing_info'].values()):
-                        app_state.set_analysis_complete(True)
-                        app_state.set_step("results")
-                    else:
-                        app_state.set_step("additional_questions")
-            st.rerun()
+                app_state.set_step("additional_questions")
+                
+        st.rerun()
 
 def handle_questions_complete(answers, app_state):
     """Handle completion of additional questions."""

@@ -12,11 +12,26 @@ class AudioService:
         st.subheader("Neem uw adviesnotities op")
         st.write("Klik op de microfoonknop om de opname te starten. Klik nogmaals om te stoppen.")
 
-        audio = mic_recorder(start_prompt="Start Opname", stop_prompt="Stop Opname", key="recorder")
+        audio = mic_recorder(
+            start_prompt="Start Opname",
+            stop_prompt="Stop Opname",
+            key="recorder"
+        )
 
-        if audio:
+        if audio and audio.get('bytes'):
+            # Add a preview of the recording
             st.audio(audio['bytes'])
-            st.success("Audio succesvol opgenomen!")
+            
+            # Show success message with timestamp
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%H:%M:%S")
+            st.success(f"✅ Audio succesvol opgenomen om {timestamp}")
+            
+            # Log the audio length for debugging
+            import sys
+            audio_size = sys.getsizeof(audio['bytes'])
+            logger.info(f"Recorded audio size: {audio_size} bytes")
+            
             return audio['bytes']
         
         return None

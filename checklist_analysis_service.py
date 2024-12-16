@@ -212,3 +212,22 @@ class ChecklistAnalysisService:
                 "error": f"Validatiefout: {str(e)}",
                 "section": section
             }
+    def validate_audio(self, audio_bytes):
+        """Validate the recorded audio data"""
+        if not audio_bytes:
+            return False
+            
+        try:
+            # Check minimum size (1KB)
+            min_size = 1024
+            if len(audio_bytes) < min_size:
+                logger.warning(f"Audio file too small: {len(audio_bytes)} bytes")
+                return False
+                
+            # Additional validation could be added here
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error validating audio: {str(e)}")
+            return False
