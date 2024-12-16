@@ -20,21 +20,31 @@ import fp_ui_components as fp_ui
 
 def initialize_services():
     """Initialize all required services."""
-    if "OPENAI_API_KEY" not in st.secrets:
-        st.error("OpenAI API key is required. Please add it to your secrets.")
+    try:
+        # Attempt to get API key and handle potential errors
+        api_key = st.secrets.get("OPENAI_API_KEY")
+        if not api_key:
+            st.error("OpenAI API key not found in secrets. Please check your secrets configuration.")
+            st.stop()
+            
+        if not api_key.startswith("sk-"):
+            st.error("Invalid OpenAI API key format. Please check your secrets configuration.")
+            st.stop()
+            
+        return {
+            'gpt_service': GPTService(api_key=api_key),
+            'audio_service': AudioService(),
+            'transcription_service': TranscriptionService(),
+            'checklist_service': ChecklistAnalysisService(api_key=api_key),
+            'fp_service': FPService(api_key=api_key),
+            'fp_analysis': FPAnalysisService(api_key=api_key),
+            'fp_report': FPReportService()
+        }
+        
+    except Exception as e:
+        st.error(f"Error initializing services: {str(e)}")
+        st.error("Please ensure your secrets.toml file is properly configured.")
         st.stop()
-
-    api_key = st.secrets["OPENAI_API_KEY"]
-    
-    return {
-        'gpt_service': GPTService(api_key=api_key),
-        'audio_service': AudioService(),
-        'transcription_service': TranscriptionService(),
-        'checklist_service': ChecklistAnalysisService(api_key=api_key),
-        'fp_service': FPService(api_key=api_key),
-        'fp_analysis': FPAnalysisService(api_key=api_key),
-        'fp_report': FPReportService()
-    }
 
 def render_input_section(services, app_state):
     """Render the initial input section with multiple input options."""
