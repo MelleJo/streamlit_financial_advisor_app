@@ -91,19 +91,20 @@ class GPTService:
             
         return True
     
-    def analyze_transcript(self, transcript: str, app_state: Optional['AppState'] = None) -> Dict[str, str]:
+    def analyze_transcript(self, transcript: str, app_state: Optional['AppState'] = None) -> Optional[Dict[str, str]]:
         """Analyzes the transcript and additional information to generate advice."""
         try:
-            if not transcript:
-                logger.error("Empty transcript provided")
-                return self._get_default_sections()
+            # Validate transcript
+            if not transcript or not transcript.strip():
+                logger.warning("Empty transcript provided")
+                return None
 
             if not self.prompt_template:
                 logger.error("Prompt template not loaded")
-                return self._get_default_sections()
+                return None
 
             # Get conversation history and additional info
-            conversation_history = self._format_additional_info(app_state)
+            conversation_history = self._format_additional_info(app_state) if app_state else ""
             
             # Get checklist analysis for remaining gaps
             checklist_analysis = self.checklist_service.analyze_transcript(
@@ -118,44 +119,38 @@ class GPTService:
                 missing_info=json.dumps(checklist_analysis["missing_topics"], ensure_ascii=False)
             )
 
-            # Create system and user messages
             messages = [
                 SystemMessage(content="""Je bent een ervaren hypotheekadviseur die gespecialiseerd is in het analyseren 
                 van klantgesprekken en het opstellen van uitgebreide adviesrapporten.
                 
                 Gebruik de checklist om te controleren of alle belangrijke onderwerpen zijn behandeld.
-                Identificeer eventuele ontbrekende informatie en geef duidelijk aan wat er nog besproken moet worden.
+                Als er geen informatie beschikbaar is, geef dit dan duidelijk aan.
                 
-                Baseer je advies ALLEEN op expliciet genoemde informatie uit het transcript en de aanvullende gesprekken.
-                
-                BELANGRIJK: Geef alleen informatie die specifiek in het transcript of de aanvullende gesprekken is genoemd.
-                Als informatie ontbreekt, geef dit expliciet aan maar vul het NIET aan met standaardteksten."""),
+                BELANGRIJK: Geef ALLEEN informatie die expliciet genoemd is in het transcript."""),
                 HumanMessage(content=formatted_prompt)
             ]
 
             response = self.llm.invoke(messages)
+            
+            if not response or not response.content.strip():
+                logger.error("Empty response from LLM")
+                return None
+                
             content = response.content.strip()
-            
-            # Validate required XML tags are present
-            required_tags = [
-                '<adviesmotivatie_leningdeel>',
-                '<adviesmotivatie_werkloosheid>',
-                '<adviesmotivatie_aow>'
-            ]
-            
-            if not all(tag in content for tag in required_tags):
-                logger.error("Response missing required tags")
-                return self._parse_sections(self._add_missing_sections(content))
             
             # Parse sections and validate content
             sections = self._parse_sections(content)
-            sections = self._validate_sections(sections, checklist_analysis["missing_topics"])
             
-            return sections
-            
+            # Only return if we have valid content
+            if any(content.strip() for content in sections.values()):
+                return sections
+            else:
+                logger.warning("No valid content in parsed sections")
+                return None
+                
         except Exception as e:
             logger.error(f"Error in transcript analysis: {str(e)}")
-            return self._get_default_sections()
+            return None
 
     def _format_additional_info(self, app_state: Optional['AppState']) -> str:
         """Safely formats additional information from app state."""

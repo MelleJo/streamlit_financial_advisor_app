@@ -177,53 +177,39 @@ def render_qa_history(qa_history, section):
     st.markdown("</div>", unsafe_allow_html=True)
 
 def render_results(app_state):
-    """Renders the analysis results with clickable terms and definitions."""
+    """Renders the analysis results with proper validation."""
     st.title("Analyse Resultaten")
     
-    if not app_state.result:
-        st.warning("Er zijn geen resultaten beschikbaar.")
+    # First check if we have a valid transcript
+    if not app_state.transcript or not app_state.transcript.strip():
+        st.warning("⚠️ Geen transcript beschikbaar. Maak eerst een opname of voer een transcript in.")
+        
+        # Add a helper button to go back
+        if st.button("↩️ Terug naar invoer"):
+            app_state.reset()
+            st.rerun()
         return
     
-    # Initialize session state
-    if 'selected_term' not in st.session_state:
-        st.session_state.selected_term = None
-    if 'selected_section' not in st.session_state:
-        st.session_state.selected_section = None
-    if 'is_loading' not in st.session_state:
-        st.session_state.is_loading = False
+    # Then check if we have valid results
+    if not app_state.result or not any(content.strip() for content in app_state.result.values()):
+        st.warning("⚠️ Geen analyse resultaten beschikbaar.")
+        
+        # Add a helper button to retry
+        if st.button("🔄 Opnieuw analyseren"):
+            app_state.reset()
+            st.rerun()
+        return
 
     # Show original transcript in expander
     with st.expander("📝 Oorspronkelijk transcript", expanded=False):
         st.markdown(f"```{app_state.transcript}```")
 
-    # Standard explanation options per section
-    standard_explanations = {
-        "adviesmotivatie_leningdeel": [
-            "Hypotheekvormen",
-            "Rentevaste periodes",
-            "NHG-voorwaarden",
-            "Maandlasten berekening"
-        ],
-        "adviesmotivatie_werkloosheid": [
-            "WW-uitkering",
-            "Woonlastenverzekering",
-            "Werkloosheidsrisico's",
-            "Financiële buffer"
-        ],
-        "adviesmotivatie_aow": [
-            "Pensioenopbouw",
-            "AOW-leeftijd",
-            "Hypotheek na pensionering",
-            "Vermogensplanning"
-        ]
-    }
-
-    # Show loading overlay if processing
-    if st.session_state.is_loading:
-        render_loading_overlay()
-
     # Process each section
     for section, content in app_state.result.items():
+        # Skip empty sections
+        if not content or not content.strip():
+            continue
+            
         with st.expander(section.replace("_", " ").capitalize(), expanded=True):
             # Display the content
             paragraphs = [p for p in content.split('\n') if p.strip()]
@@ -233,39 +219,15 @@ def render_results(app_state):
             # Display Q&A history relevant to this section
             render_qa_history(app_state.structured_qa_history, section.replace("adviesmotivatie_", ""))
             
-            # Standard explanations section
-            st.markdown("""
-                <div class="standard-explanations">
-                    <h4>Voeg standaard uitleg toe:</h4>
-                </div>
-            """, unsafe_allow_html=True)
-            
-            # Create columns for explanation options
-            cols = st.columns(2)
-            for idx, explanation in enumerate(standard_explanations[section]):
-                with cols[idx % 2]:
-                    if st.button(
-                        f"➕ {explanation}",
-                        key=f"{section}_exp_{idx}",
-                        use_container_width=True
-                    ):
-                        st.session_state.is_loading = True
-                        enhanced_text = improve_explanation(
-                            explanation,
-                            f"Standaard uitleg over {explanation}",
-                            content,
-                            st.session_state.openai_client
-                        )
-                        if enhanced_text:
-                            app_state.result[section] = enhanced_text
-                        st.session_state.is_loading = False
-                        st.rerun()
+            # Only show standard explanations if we have actual content
+            if content.strip():
+                render_standard_explanations(section)
 
-    # Export options
-    st.markdown("### 📑 Exporteer Resultaten")
-    
-    if st.button("Exporteer als Word-document", use_container_width=True):
-        export_to_docx(app_state)
+    # Export options only if we have valid content
+    if any(content.strip() for content in app_state.result.values()):
+        st.markdown("### 📑 Exporteer Resultaten")
+        if st.button("Exporteer als Word-document", use_container_width=True):
+            export_to_docx(app_state)
 
     if st.button("Nieuwe Analyse", use_container_width=True):
         app_state.reset()
