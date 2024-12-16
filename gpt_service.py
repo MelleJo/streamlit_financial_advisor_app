@@ -13,6 +13,7 @@ from app_state import AppState
 from conversation_service import ConversationService
 from checklist_analysis_service import ChecklistAnalysisService, CHECKLIST
 from datetime import datetime
+import re
 
 logging.basicConfig(
     level=logging.INFO,
@@ -221,30 +222,23 @@ class GPTService:
         """Returns an enhanced system prompt focused on content from source materials."""
         return """Je bent een ervaren hypotheekadviseur die gespreksnotities en klantinformatie verwerkt tot professionele rapportages.
 
-BELANGRIJKE RICHTLIJNEN:
-- Gebruik ALLEEN informatie uit het transcript en klantprofiel
-- Verwijs NIET naar toekomstige gesprekken of afspraken
-- Verwerk alle relevante informatie uit de bronnen
-- Organiseer de informatie in een logische structuur
+        BELANGRIJKE RICHTLIJNEN:
+        - VERWIJDER alle adviseursnamen, bedrijfsnamen en datums
+        - Gebruik ALLEEN relevante financiële en hypotheekinformatie
+        - Begin direct met de inhoudelijke informatie
+        - Schrijf in een objectieve, professionele stijl
 
-SCHRIJFSTIJL:
-- Professioneel en zakelijk taalgebruik
-- Duidelijke, volledige zinnen
-- Correcte financiële terminologie
-- Objectieve toon
-- Concrete voorbeelden uit de bronmaterialen
+        STRUCTUUR:
+        - Start direct met de situatiebeschrijving
+        - Gebruik duidelijke secties met nummering
+        - Focus op financiële details en voorwaarden
+        - Eindig met concrete conclusies
 
-STRUCTUUR:
-- Begin elke sectie met een duidelijke inleiding
-- Gebruik consistente kopjes en subkopjes
-- Maak gebruik van opsommingstekens voor overzicht
-- Eindig met relevante conclusies
-
-INHOUD:
-- Focus op expliciet genoemde informatie
-- Vermeld ontbrekende aspecten zonder vervolgacties te suggereren
-- Gebruik specifieke getallen en percentages uit de bronnen
-- Verwijs naar concrete klantsituaties uit het gesprek"""
+        INHOUD:
+        - Beschrijf alleen relevante financiële informatie
+        - Gebruik specifieke cijfers en voorwaarden
+        - Vermijd persoonlijke referenties naar adviseurs
+        - Focus op de klantsituatie en gekozen oplossingen"""
 
     def _enhance_sections(self, sections: Dict[str, str], app_state: Optional['AppState']) -> Dict[str, str]:
         """Enhances sections with additional context and structure."""
@@ -282,10 +276,14 @@ INHOUD:
         return enhanced_sections
 
     def _format_section_content(self, content: str) -> str:
-        """Formats section content into professional, flowing text."""
+        """Formats section content into professional, flowing text without personal identifiers."""
+        # Remove advisor and company identifiers and dates
+        content = re.sub(r'In het gesprek met [^,]+(, \d{1,2} [a-zA-Z]+ \d{4})?', '', content)
+        content = re.sub(r'\b(op|van) \d{1,2} [a-zA-Z]+ \d{4}', '', content)
+        content = re.sub(r'Marcel van der Beld|Veldhuisadvies WV', '', content)
+        
         paragraphs = content.split('\n')
         formatted_content = []
-        current_section = None
         current_paragraph = []
         
         for line in paragraphs:
@@ -293,33 +291,24 @@ INHOUD:
             if not line:
                 continue
                 
-            # Handle section headers
-            if line[0].isdigit() and '.' in line:
-                if current_paragraph:
-                    formatted_content.append(' '.join(current_paragraph))
-                    current_paragraph = []
-                formatted_content.append(f"\n{line}\n")
-                continue
-                
-            # Convert bullet points to full sentences
-            if line.startswith('•') or line.startswith('-'):
-                point = line[1:].strip()
-                # Ensure proper sentence structure
-                if not point.endswith(('.', '!', '?')):
-                    point += '.'
-                if current_paragraph:
-                    formatted_content.append(' '.join(current_paragraph))
-                    current_paragraph = []
-                current_paragraph.append(point)
-                continue
-                
-            # Handle regular text
+            # For this example, it should start directly with:
+            # "De koop van een woning in Heerde werd besproken..."
+            if line.startswith('In het gesprek'):
+                line = re.sub(r'^.*?, werd de', 'De', line)
+            
             current_paragraph.append(line)
             
+            # Add paragraph break on section numbers
+            if line.strip().startswith(('1.', '2.', '3.')):
+                if current_paragraph:
+                    formatted_content.append(' '.join(current_paragraph[:-1]))
+                    current_paragraph = [line]
+
         # Add any remaining paragraph
         if current_paragraph:
             formatted_content.append(' '.join(current_paragraph))
             
+        # Join all paragraphs with proper spacing
         return '\n\n'.join(formatted_content)
 
     def _format_werkloosheid_section(self, client_info: Dict[str, Any]) -> str:
