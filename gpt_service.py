@@ -192,29 +192,33 @@ class GPTService:
             return None
 
     def _get_enhanced_system_prompt(self) -> str:
-        """Returns an enhanced system prompt for better content generation."""
-        return """Je bent een ervaren hypotheekadviseur die uitgebreide en professionele adviezen schrijft.
+        """Returns an enhanced system prompt focused on content from source materials."""
+        return """Je bent een ervaren hypotheekadviseur die gespreksnotities en klantinformatie verwerkt tot professionele rapportages.
 
-SCHRIJFSTIJL:
-- Gebruik een professionele, zakelijke toon
-- Schrijf in volledige, duidelijke zinnen
-- Zorg voor een logische opbouw en structuur
-- Gebruik financiële vaktermen correct en consistent
-- Onderbouw alle adviezen met concrete informatie
+    BELANGRIJKE RICHTLIJNEN:
+    - Gebruik ALLEEN informatie uit het transcript en klantprofiel
+    - Verwijs NIET naar toekomstige gesprekken of afspraken
+    - Verwerk alle relevante informatie uit de bronnen
+    - Organiseer de informatie in een logische structuur
 
-INHOUDELIJKE RICHTLIJNEN:
-- Focus op specifieke klantinformatie uit het transcript en profiel
-- Geef gedetailleerde, persoonlijke analyses
-- Vermijd algemene of generieke uitspraken
-- Wees specifiek over ontbrekende informatie
-- Maak duidelijk onderscheid tussen feiten en advies
+    SCHRIJFSTIJL:
+    - Professioneel en zakelijk taalgebruik
+    - Duidelijke, volledige zinnen
+    - Correcte financiële terminologie
+    - Objectieve toon
+    - Concrete voorbeelden uit de bronmaterialen
 
-KWALITEITSEISEN:
-- Elk adviesonderdeel moet minstens 3 concrete punten bevatten
-- Gebruik specifieke getallen en percentages waar beschikbaar
-- Geef concrete voorbeelden bij algemene concepten
-- Verwijs naar specifieke klantsituaties
-- Maak risico's en kansen expliciet"""
+    STRUCTUUR:
+    - Begin elke sectie met een duidelijke inleiding
+    - Gebruik consistente kopjes en subkopjes
+    - Maak gebruik van opsommingstekens voor overzicht
+    - Eindig met relevante conclusies
+
+    INHOUD:
+    - Focus op expliciet genoemde informatie
+    - Vermeld ontbrekende aspecten zonder vervolgacties te suggereren
+    - Gebruik specifieke getallen en percentages uit de bronnen
+    - Verwijs naar concrete klantsituaties uit het gesprek"""
 
     def _enhance_sections(self, sections: Dict[str, str], app_state: Optional['AppState']) -> Dict[str, str]:
         """Enhances sections with additional context and structure."""
@@ -310,23 +314,24 @@ KWALITEITSEISEN:
         return "\n".join(context_parts)
 
     def _get_section_conclusion(self, section: str, content: str) -> str:
-        """Generates appropriate conclusion for each section."""
+        """Generates appropriate conclusion based on available information."""
         conclusions = {
             "adviesmotivatie_leningdeel": """
-Bovenstaand advies is gebaseerd op de huidige financiële situatie en marktomstandigheden. 
-Het is raadzaam om de gekozen opties periodiek te evalueren en aan te passen indien nodig.""",
+    Dit advies is gebaseerd op de besproken financiële situatie en de huidige marktomstandigheden. 
+    De gekozen opties sluiten aan bij het besproken risicoprofiel en de persoonlijke voorkeuren.""",
+            
             "adviesmotivatie_werkloosheid": """
-De voorgestelde maatregelen bieden bescherming tegen inkomensterugval bij werkloosheid.
-Regelmatige evaluatie van de dekking blijft belangrijk naarmate de situatie verandert.""",
+    De analyse van het werkloosheidsscenario is gebaseerd op de besproken arbeidsmarktpositie en persoonlijke situatie.
+    De voorgestelde maatregelen zijn afgestemd op het gewenste beschermingsniveau.""",
+            
             "adviesmotivatie_aow": """
-Dit pensioenadvies geeft inzicht in de huidige situatie en gewenste aanpassingen.
-Jaarlijkse herziening wordt aanbevolen om de planning actueel te houden."""
+    De pensioenanalyse is gebaseerd op de huidige opbouw en de besproken toekomstplannen.
+    De financiële planning sluit aan bij de gewenste situatie na pensionering."""
         }
         
         base_conclusion = conclusions.get(section, "")
-        
-        if "Nog te bespreken" in content:
-            base_conclusion += "\n\nDe hierboven genoemde openstaande punten zullen in een vervolgafspraak worden besproken."
+        if "Nog te behandelen aspecten" in content:
+            base_conclusion += "\nVerdere detaillering van de genoemde aspecten zal bijdragen aan een optimaal advies."
             
         return base_conclusion
 
@@ -452,7 +457,7 @@ Jaarlijkse herziening wordt aanbevolen om de planning actueel te houden."""
         return True
 
     def _create_missing_content_notice(self, section: str) -> str:
-        """Creates professional notice about missing information."""
+        """Creates a professional notice about missing information based on source materials."""
         section_names = {
             "adviesmotivatie_leningdeel": "hypothecaire financiering",
             "adviesmotivatie_werkloosheid": "werkloosheidsscenario",
@@ -461,17 +466,20 @@ Jaarlijkse herziening wordt aanbevolen om de planning actueel te houden."""
         
         section_name = section_names.get(section, section)
         
-        return f"""1. Aanvullende Informatie Benodigd
+        return f"""1. Beschikbare Informatie
+    De volgende aspecten met betrekking tot {section_name} zijn in kaart gebracht op basis van het gesprek:
+    • Algemene uitgangspunten zijn besproken
+    • Globale wensen zijn geïnventariseerd
 
-Voor een volledig advies over uw {section_name} is aanvullende informatie nodig. De volgende aspecten zullen tijdens een vervolgafspraak worden besproken:
+    2. Aanvullende Aspecten
+    Voor een compleet beeld zijn de volgende aspecten relevant:
+    • Specifieke wensen ten aanzien van {section_name}
+    • Concrete financiële doelstellingen
+    • Risico's en mogelijke maatregelen
 
-2. Belangrijke Bespreekpunten
-• Specifieke wensen en voorkeuren ten aanzien van {section_name}
-• Concrete financiële planning en doelstellingen
-• Inventarisatie van mogelijke risico's en oplossingsrichtingen
-
-3. Vervolgafspraak
-Een vervolgafspraak wordt ingepland om bovenstaande punten te bespreken en een volledig onderbouwd advies op te stellen."""
+    3. Huidige Status
+    Op basis van de beschikbare informatie is een eerste inventarisatie gemaakt. 
+    Verdere detaillering van bovenstaande punten zal het advies verder aanscherpen."""
 
     def _get_section_introduction(self, section: str, app_state: Optional['AppState']) -> str:
         """Creates professional introduction for each section."""
@@ -557,7 +565,7 @@ Een vervolgafspraak wordt ingepland om bovenstaande punten te bespreken en een v
             "context": "We beginnen met de belangrijkste uitgangspunten voor uw hypotheekadvies."
         }
     def _get_missing_information_notice(self, section: str, app_state: Optional['AppState']) -> Optional[str]:
-        """Generates professional notice about missing information for a section."""
+        """Generates notice about missing information based on source materials."""
         section_mapping = {
             "adviesmotivatie_leningdeel": "leningdeel",
             "adviesmotivatie_werkloosheid": "werkloosheid",
@@ -565,13 +573,9 @@ Een vervolgafspraak wordt ingepland om bovenstaande punten te bespreken en een v
         }
         
         section_key = section_mapping.get(section)
-        if not section_key:
+        if not section_key or not app_state or not app_state.missing_info:
             return None
 
-        # Get missing items from app state
-        if not app_state or not hasattr(app_state, 'missing_info') or not app_state.missing_info:
-            return None
-            
         missing_items = app_state.missing_info.get(section_key, [])
         if not missing_items:
             return None
@@ -582,15 +586,8 @@ Een vervolgafspraak wordt ingepland om bovenstaande punten te bespreken en een v
             "aow": "pensioen- en AOW-situatie"
         }
 
-        # Create professional notice
-        notice = f"\nOntbrekende informatie voor {section_titles.get(section_key, section_key)}:"
+        notice = f"\nNog te behandelen aspecten voor {section_titles.get(section_key, section_key)}:"
         for item in missing_items:
             notice += f"\n• {item}"
-
-        notice += """
-
-    Voor een compleet advies is het essentieel dat we bovenstaande punten in detail bespreken. 
-    Dit stelt ons in staat een op maat gemaakt advies te formuleren dat optimaal aansluit bij uw situatie.
-    Een vervolgafspraak wordt ingepland om deze aspecten te behandelen."""
 
         return notice
