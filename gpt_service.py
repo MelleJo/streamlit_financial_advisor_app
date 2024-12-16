@@ -52,6 +52,7 @@ class GPTService:
             return self._get_default_missing_info()
 
     def analyze_transcript(self, transcript: str, app_state: Optional['AppState'] = None) -> Optional[Dict[str, str]]:
+        """Analyzes the transcript and additional information to generate advice."""
         try:
             if not transcript or not transcript.strip():
                 logger.warning("Empty transcript provided")
@@ -61,41 +62,65 @@ class GPTService:
                 logger.error("Prompt template not loaded")
                 return None
 
+            # Get conversation history and additional info
             conversation_history = self._format_additional_info(app_state) if app_state else ""
             
+            # Get klantprofiel if available
+            klantprofiel = app_state.klantprofiel if app_state and hasattr(app_state, 'klantprofiel') else "Geen klantprofiel beschikbaar."
+            
+            # Get checklist analysis
             checklist_analysis = self.checklist_service.analyze_transcript(
                 transcript + "\n\n" + conversation_history
             )
 
-            formatted_prompt = self.prompt_template.format(
-                transcript=transcript,
-                conversation_history=conversation_history,
-                checklist=json.dumps(CHECKLIST, ensure_ascii=False),
-                missing_info=json.dumps(checklist_analysis["missing_topics"], ensure_ascii=False)
-            )
+            # Format the prompt template with all available information and safe defaults
+            try:
+                formatted_prompt = self.prompt_template.format(
+                    transcript=transcript,
+                    klantprofiel=klantprofiel,
+                    conversation_history=conversation_history or "Geen aanvullende gespreksinformatie beschikbaar.",
+                    checklist=json.dumps(CHECKLIST, ensure_ascii=False),
+                    missing_info=json.dumps(checklist_analysis["missing_topics"], ensure_ascii=False)
+                )
+            except KeyError as e:
+                logger.error(f"Missing key in prompt template: {str(e)}")
+                return None
+            except Exception as e:
+                logger.error(f"Error formatting prompt template: {str(e)}")
+                return None
 
+            # Create completion messages
             messages = [
                 SystemMessage(content="""Je bent een ervaren hypotheekadviseur die gespecialiseerd is in het analyseren 
                 van klantgesprekken en het opstellen van uitgebreide adviesrapporten.
                 
                 BELANGRIJK: 
-                - Geef ALLEEN informatie die expliciet genoemd is in het transcript
-                - Gebruik GEEN placeholder tekst of algemene aannames
-                - Als informatie ontbreekt, geef dit expliciet aan"""),
+                - Gebruik ALLEEN informatie uit het transcript, klantprofiel en aanvullende gesprekken
+                - Als informatie ontbreekt, geef dit expliciet aan zonder aannames
+                - Structureer het advies volgens het gegeven format
+                - Geef geen algemene of placeholder tekst"""),
                 HumanMessage(content=formatted_prompt)
             ]
 
+            # Get response from LLM
             response = self.llm.invoke(messages)
             
             if not response or not response.content.strip():
                 logger.error("Empty response from LLM")
                 return None
                 
+            # Process and validate response
             sections = self._parse_sections(response.content.strip())
             validated_sections = self._validate_sections(sections, checklist_analysis["missing_topics"])
             
-            return validated_sections if any(content.strip() for content in validated_sections.values()) else None
-                
+            # Only return if we have valid content
+            if any(content.strip() for content in validated_sections.values()):
+                logger.info("Successfully generated advice sections")
+                return validated_sections
+            else:
+                logger.warning("No valid content in parsed sections")
+                return None
+                    
         except Exception as e:
             logger.error(f"Error in transcript analysis: {str(e)}")
             return None
