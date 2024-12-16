@@ -7,6 +7,7 @@ This module provides:
 2. A function to improve explanations by integrating basic definitions into the original
    advice text in a natural and professional way using GPT-4.
 """
+import logging
 
 MORTGAGE_DEFINITIONS = {
     "NHG": """
@@ -173,35 +174,36 @@ Kenmerken:
 """
 }
 
-def improve_explanation(term, base_uitleg, originele_tekst, client):
-    prompt = f"""Je bent een ervaren financieel adviseur die een collega helpt om een hypotheekadvies te verbeteren.
+def improve_explanation(term: str, base_uitleg: str, originele_tekst: str, client) -> str:
+    """Improves the explanation by integrating basic definitions into the original text."""
+    try:
+        if not client:
+            return originele_tekst
 
-CONTEXT:
-- De originele tekst van je collega bevat alle essentiële adviesinformatie
-- Je moet deze informatie EXACT behouden
-- Je taak is ALLEEN om een heldere uitleg over '{term}' toe te voegen
-- Integreer de volgende basisuitleg op een natuurlijke manier:
+        prompt = f"""Je bent een ervaren financieel adviseur. Verbeter deze hypotheekadvies tekst door een duidelijke uitleg over {term} toe te voegen.
 
 BASISUITLEG:
 {base_uitleg}
 
-ORIGINELE TEKST VAN COLLEGA:
+HUIDIGE TEKST:
 {originele_tekst}
 
 INSTRUCTIES:
-1. Behoud ALLE originele informatie en advies
+1. Behoud ALLE bestaande informatie
 2. Voeg de uitleg over {term} op een logische plek toe
 3. Zorg voor vloeiende overgangen
 4. Gebruik professionele maar begrijpelijke taal
+5. Maak de relatie met de klantsituatie duidelijk"""
 
-Let op: Je mag het originele advies NIET wijzigen, alleen aanvullen met de uitleg."""
-
-    try:
         response = client.chat.completions.create(
-            model="gpt-4o-mini",  
+            model="gpt-4-1106-preview",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7
         )
-        return response.choices[0].message.content
+        
+        result = response.choices[0].message.content
+        return result if result else originele_tekst
+
     except Exception as e:
-        return f"Fout bij het genereren van de verbeterde tekst: {str(e)}"
+        logging.error(f"Error improving explanation: {str(e)}")
+        return originele_tekst

@@ -95,46 +95,48 @@ def render_qa_history(qa_history, section):
     st.markdown("</div>", unsafe_allow_html=True)
 
 def render_standard_explanations(section: str, current_content: str) -> str:
-    """Renders standard explanation options with proper state handling."""
+    """Renders standard explanation options for a section."""
+    # Initialize OpenAI client if needed
+    if 'openai_client' not in st.session_state:
+        try:
+            from openai import OpenAI
+            st.session_state.openai_client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+        except Exception as e:
+            st.error(f"Error initializing OpenAI client: {str(e)}")
+            return current_content
+
     standard_explanations = {
         "adviesmotivatie_leningdeel": {
-            "Hypotheekvormen": "hypotheekvormen",
-            "NHG-voorwaarden": "nhg",
-            "Rentevaste periodes": "rentevaste_periode",
-            "Maandlasten berekening": "maandlasten"
+            "Hypotheekvormen": """Een hypotheek is een lening met een woning als onderpand. Er zijn verschillende hypotheekvormen waaruit u kunt kiezen. De meest voorkomende vormen zijn de annuïteitenhypotheek en de lineaire hypotheek.""",
+            "NHG-voorwaarden": """De Nationale Hypotheek Garantie (NHG) is een garantie op hypotheken. Met NHG bent u verzekerd van een verantwoorde hypotheek die aansluit op uw situatie. Bovendien kunt u met NHG profiteren van een rentevoordeel.""",
+            "Rentevaste periodes": """De rentevaste periode is de periode waarin uw hypotheekrente gelijk blijft. Hoe langer deze periode, hoe meer zekerheid u heeft over uw maandlasten.""",
+            "Maandlasten berekening": """De maandlasten van uw hypotheek bestaan uit verschillende componenten: rente, aflossing (bij annuïtair of lineair), en eventuele verzekeringspremies."""
         }
     }
 
     if section not in standard_explanations:
         return current_content
 
-    explanation_options = standard_explanations[section]
-    
     col1, col2 = st.columns(2)
     updated_content = current_content
-    
-    for idx, (label, key) in enumerate(explanation_options.items()):
+
+    for idx, (label, explanation) in enumerate(standard_explanations[section].items()):
         with col1 if idx % 2 == 0 else col2:
-            if st.button(f"➕ {label}", key=f"{section}_{key}_btn"):
+            if st.button(f"➕ {label}", key=f"{section}_{idx}", use_container_width=True):
                 try:
-                    # Get the definition from the mortgage definitions
-                    definition = MORTGAGE_DEFINITIONS.get(key, "")
-                    if definition:
-                        # Generate improved text with OpenAI
-                        with st.spinner(f"Voeg {label} uitleg toe..."):
-                            updated_content = improve_explanation(
-                                label, 
-                                definition,
-                                updated_content,
-                                st.session_state.get('openai_client')
-                            )
-                            if updated_content:
-                                # Store in session state to persist
-                                st.session_state[f"{section}_content"] = updated_content
-                                return updated_content
+                    # Use improve_explanation to enhance the text
+                    with st.spinner(f"Uitleg over {label} wordt toegevoegd..."):
+                        improved = improve_explanation(
+                            label,
+                            explanation,
+                            updated_content,
+                            st.session_state.openai_client
+                        )
+                        if improved:
+                            updated_content = improved
                 except Exception as e:
-                    st.error(f"Fout bij toevoegen van uitleg: {str(e)}")
-    
+                    st.error(f"Fout bij het toevoegen van uitleg: {str(e)}")
+
     return updated_content
 
 def render_results(app_state):
