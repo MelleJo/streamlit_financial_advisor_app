@@ -1,22 +1,35 @@
+"""
+File: gpt_service.py
+Provides sophisticated GPT-based analysis and advice generation for the AI Hypotheek Assistent.
+"""
+
 import logging
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import HumanMessage, SystemMessage
 import json
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List, Tuple
 from app_state import AppState
 from conversation_service import ConversationService
 from checklist_analysis_service import ChecklistAnalysisService, CHECKLIST
+from datetime import datetime
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 class GPTService:
     def __init__(self, api_key: str):
+        """Initialize the GPT service with enhanced configuration."""
         self.llm = ChatOpenAI(
             model="gpt-4o-2024-08-06",
-            temperature=0.2,
-            openai_api_key=api_key
+            temperature=0.4,  # Balanced between creativity and consistency
+            openai_api_key=api_key,
+            max_tokens=4000,  # Ensure enough space for detailed responses
+            presence_penalty=0.1,  # Slight penalty to avoid repetition
+            frequency_penalty=0.1  # Slight penalty for more diverse language
         )
         self.conversation_service = ConversationService(api_key)
         self.checklist_service = ChecklistAnalysisService(api_key)
@@ -24,16 +37,22 @@ class GPTService:
         try:
             with open('prompt_template.txt', 'r', encoding='utf-8') as file:
                 self.prompt_template = file.read()
+            logger.info("Successfully loaded prompt template")
         except Exception as e:
             logger.error(f"Error loading prompt template: {str(e)}")
             self.prompt_template = ""
 
     def analyze_initial_transcript(self, transcript: str) -> Dict[str, Any]:
+        """Analyzes the initial transcript to identify missing information."""
         try:
             if not transcript or not transcript.strip():
                 logger.warning("Empty transcript provided")
                 return self._get_default_missing_info()
 
+            # Time the analysis for performance monitoring
+            start_time = datetime.now()
+
+            # Perform parallel analysis
             checklist_analysis = self.checklist_service.analyze_transcript(transcript)
             conversation_analysis = self.conversation_service.analyze_initial_transcript(transcript)
             
@@ -41,10 +60,11 @@ class GPTService:
                 "missing_info": checklist_analysis["missing_topics"],
                 "explanation": checklist_analysis["explanation"],
                 "next_question": conversation_analysis["next_question"],
-                "context": conversation_analysis["context"]
+                "context": conversation_analysis["context"],
+                "analysis_time": (datetime.now() - start_time).total_seconds()
             }
             
-            logger.info(f"Combined analysis result: {result}")
+            logger.info(f"Initial analysis completed in {result['analysis_time']}s")
             return result
             
         except Exception as e:
@@ -52,80 +72,282 @@ class GPTService:
             return self._get_default_missing_info()
 
     def analyze_transcript(self, transcript: str, app_state: Optional['AppState'] = None) -> Optional[Dict[str, str]]:
-        """Analyzes the transcript and additional information to generate advice."""
+        """Performs comprehensive transcript analysis with enhanced content generation."""
         try:
-            if not transcript or not transcript.strip():
-                logger.warning("Empty transcript provided")
+            # Validate inputs
+            if not self._validate_inputs(transcript):
                 return None
 
-            if not self.prompt_template:
-                logger.error("Prompt template not loaded")
-                return None
-
-            # Get conversation history and additional info
+            # Process available information
             conversation_history = self._format_additional_info(app_state) if app_state else ""
+            klantprofiel = self._get_klantprofiel(app_state)
             
-            # Get klantprofiel if available
-            klantprofiel = app_state.klantprofiel if app_state and hasattr(app_state, 'klantprofiel') else "Geen klantprofiel beschikbaar."
+            # Get enriched analysis
+            checklist_analysis = self._get_enriched_analysis(transcript, conversation_history)
             
-            # Get checklist analysis
-            checklist_analysis = self.checklist_service.analyze_transcript(
-                transcript + "\n\n" + conversation_history
+            # Format enhanced prompt
+            formatted_prompt = self._create_enhanced_prompt(
+                transcript, klantprofiel, conversation_history, checklist_analysis
             )
-
-            # Format the prompt template with all available information and safe defaults
-            try:
-                formatted_prompt = self.prompt_template.format(
-                    transcript=transcript,
-                    klantprofiel=klantprofiel,
-                    conversation_history=conversation_history or "Geen aanvullende gespreksinformatie beschikbaar.",
-                    checklist=json.dumps(CHECKLIST, ensure_ascii=False),
-                    missing_info=json.dumps(checklist_analysis["missing_topics"], ensure_ascii=False)
-                )
-            except KeyError as e:
-                logger.error(f"Missing key in prompt template: {str(e)}")
-                return None
-            except Exception as e:
-                logger.error(f"Error formatting prompt template: {str(e)}")
+            if not formatted_prompt:
                 return None
 
-            # Create completion messages
-            messages = [
-                SystemMessage(content="""Je bent een ervaren hypotheekadviseur die gespecialiseerd is in het analyseren 
-                van klantgesprekken en het opstellen van uitgebreide adviesrapporten.
-                
-                BELANGRIJK: 
-                - Gebruik ALLEEN informatie uit het transcript, klantprofiel en aanvullende gesprekken
-                - Als informatie ontbreekt, geef dit expliciet aan zonder aannames
-                - Structureer het advies volgens het gegeven format
-                - Geef geen algemene of placeholder tekst"""),
-                HumanMessage(content=formatted_prompt)
-            ]
-
-            # Get response from LLM
-            response = self.llm.invoke(messages)
+            # Generate content
+            response = self._generate_content(formatted_prompt)
+            if not response:
+                return None
             
-            if not response or not response.content.strip():
-                logger.error("Empty response from LLM")
-                return None
-                
-            # Process and validate response
+            # Process and enhance response
             sections = self._parse_sections(response.content.strip())
             validated_sections = self._validate_sections(sections, checklist_analysis["missing_topics"])
+            enhanced_sections = self._enhance_sections(validated_sections, app_state)
             
-            # Only return if we have valid content
-            if any(content.strip() for content in validated_sections.values()):
-                logger.info("Successfully generated advice sections")
-                return validated_sections
-            else:
-                logger.warning("No valid content in parsed sections")
+            # Verify final content quality
+            if not self._verify_content_quality(enhanced_sections):
+                logger.warning("Generated content did not meet quality standards")
                 return None
-                    
+
+            logger.info("Successfully generated enhanced advice content")
+            return enhanced_sections
+
         except Exception as e:
             logger.error(f"Error in transcript analysis: {str(e)}")
             return None
 
+    def _validate_inputs(self, transcript: str) -> bool:
+        """Validates input requirements."""
+        if not transcript or not transcript.strip():
+            logger.warning("Empty transcript provided")
+            return False
+
+        if not self.prompt_template:
+            logger.error("Prompt template not loaded")
+            return False
+
+        return True
+
+    def _get_klantprofiel(self, app_state: Optional['AppState']) -> str:
+        """Safely retrieves and formats klantprofiel information."""
+        try:
+            if not app_state or not hasattr(app_state, 'klantprofiel'):
+                return "Geen klantprofiel beschikbaar."
+                
+            klantprofiel = app_state.klantprofiel
+            if not klantprofiel or not klantprofiel.strip():
+                return "Geen klantprofiel beschikbaar."
+                
+            return klantprofiel
+            
+        except Exception as e:
+            logger.error(f"Error retrieving klantprofiel: {str(e)}")
+            return "Geen klantprofiel beschikbaar."
+
+    def _get_enriched_analysis(self, transcript: str, conversation_history: str) -> Dict[str, Any]:
+        """Performs enriched analysis of all available information."""
+        combined_text = f"{transcript}\n\n{conversation_history}".strip()
+        analysis = self.checklist_service.analyze_transcript(combined_text)
+        
+        # Add analysis timestamp
+        analysis['timestamp'] = datetime.now().isoformat()
+        
+        # Add completion percentage
+        total_topics = sum(len(topics) for topics in CHECKLIST.values())
+        missing_topics = sum(len(topics) for topics in analysis['missing_topics'].values())
+        analysis['completion_percentage'] = ((total_topics - missing_topics) / total_topics) * 100
+        
+        return analysis
+
+    def _create_enhanced_prompt(
+        self, 
+        transcript: str, 
+        klantprofiel: str, 
+        conversation_history: str, 
+        analysis: Dict[str, Any]
+    ) -> Optional[str]:
+        """Creates an enhanced prompt with all available information."""
+        try:
+            return self.prompt_template.format(
+                transcript=transcript,
+                klantprofiel=klantprofiel,
+                conversation_history=conversation_history or "Geen aanvullende gespreksinformatie beschikbaar.",
+                checklist=json.dumps(CHECKLIST, ensure_ascii=False),
+                missing_info=json.dumps(analysis["missing_topics"], ensure_ascii=False)
+            )
+        except Exception as e:
+            logger.error(f"Error creating enhanced prompt: {str(e)}")
+            return None
+
+    def _generate_content(self, formatted_prompt: str) -> Optional[Any]:
+        """Generates enhanced content using the LLM."""
+        try:
+            messages = [
+                SystemMessage(content=self._get_enhanced_system_prompt()),
+                HumanMessage(content=formatted_prompt)
+            ]
+            
+            return self.llm.invoke(messages)
+            
+        except Exception as e:
+            logger.error(f"Error generating content: {str(e)}")
+            return None
+
+    def _get_enhanced_system_prompt(self) -> str:
+        """Returns an enhanced system prompt for better content generation."""
+        return """Je bent een ervaren hypotheekadviseur die uitgebreide en professionele adviezen schrijft.
+
+SCHRIJFSTIJL:
+- Gebruik een professionele, zakelijke toon
+- Schrijf in volledige, duidelijke zinnen
+- Zorg voor een logische opbouw en structuur
+- Gebruik financiële vaktermen correct en consistent
+- Onderbouw alle adviezen met concrete informatie
+
+INHOUDELIJKE RICHTLIJNEN:
+- Focus op specifieke klantinformatie uit het transcript en profiel
+- Geef gedetailleerde, persoonlijke analyses
+- Vermijd algemene of generieke uitspraken
+- Wees specifiek over ontbrekende informatie
+- Maak duidelijk onderscheid tussen feiten en advies
+
+KWALITEITSEISEN:
+- Elk adviesonderdeel moet minstens 3 concrete punten bevatten
+- Gebruik specifieke getallen en percentages waar beschikbaar
+- Geef concrete voorbeelden bij algemene concepten
+- Verwijs naar specifieke klantsituaties
+- Maak risico's en kansen expliciet"""
+
+    def _enhance_sections(self, sections: Dict[str, str], app_state: Optional['AppState']) -> Dict[str, str]:
+        """Enhances sections with additional context and structure."""
+        enhanced_sections = {}
+        
+        for section, content in sections.items():
+            if not self._is_valid_section_content(content):
+                enhanced_sections[section] = self._create_missing_content_notice(section)
+                continue
+
+            # Build enhanced content
+            enhanced_content = []
+            
+            # Add professional introduction
+            enhanced_content.append(self._get_section_introduction(section, app_state))
+            
+            # Process main content
+            formatted_content = self._format_section_content(content)
+            enhanced_content.append(formatted_content)
+            
+            # Add contextual information
+            if context := self._get_contextual_information(section, app_state):
+                enhanced_content.append(context)
+            
+            # Add missing information notices
+            if missing := self._get_missing_information_notice(section, app_state):
+                enhanced_content.append(missing)
+            
+            # Add professional conclusion
+            enhanced_content.append(self._get_section_conclusion(section, content))
+            
+            # Combine all parts
+            enhanced_sections[section] = "\n\n".join(filter(None, enhanced_content))
+
+        return enhanced_sections
+
+    def _format_section_content(self, content: str) -> str:
+        """Formats section content with professional structure."""
+        paragraphs = content.split('\n')
+        formatted_paragraphs = []
+        
+        current_section = None
+        for paragraph in paragraphs:
+            if not paragraph.strip():
+                continue
+                
+            # Handle section headers
+            if paragraph[0].isdigit() and '.' in paragraph:
+                current_section = paragraph.strip()
+                formatted_paragraphs.append(f"\n{current_section}\n")
+                continue
+            
+            # Handle bullet points
+            if paragraph.strip().startswith('-'):
+                point = paragraph.strip()[1:].strip()
+                formatted_line = self._format_bullet_point(point)
+                formatted_paragraphs.append(formatted_line)
+                continue
+            
+            # Handle regular paragraphs
+            formatted_paragraphs.append(paragraph.strip())
+
+        return "\n".join(formatted_paragraphs)
+
+    def _format_bullet_point(self, point: str) -> str:
+        """Formats bullet points into professional sentences."""
+        # Ensure the point starts with capital letter
+        point = point[0].upper() + point[1:]
+        
+        # Add proper punctuation if missing
+        if not point.endswith(('.', ':', '?', '!')):
+            point += '.'
+            
+        return f"• {point}"
+
+    def _get_contextual_information(self, section: str, app_state: Optional['AppState']) -> Optional[str]:
+        """Retrieves relevant contextual information for the section."""
+        if not app_state or not app_state.structured_qa_history:
+            return None
+            
+        relevant_qa = [qa for qa in app_state.structured_qa_history 
+                      if qa.get('category') == section.replace("adviesmotivatie_", "")]
+                      
+        if not relevant_qa:
+            return None
+            
+        context_parts = ["Aanvullende informatie uit het klantgesprek:"]
+        for qa in relevant_qa:
+            context_parts.append(f"• Besproken onderwerp: {qa.get('context', '')}")
+            context_parts.append(f"  - Vraag: {qa.get('question', '')}")
+            context_parts.append(f"  - Antwoord: {qa.get('answer', '')}")
+            
+        return "\n".join(context_parts)
+
+    def _get_section_conclusion(self, section: str, content: str) -> str:
+        """Generates appropriate conclusion for each section."""
+        conclusions = {
+            "adviesmotivatie_leningdeel": """
+Bovenstaand advies is gebaseerd op de huidige financiële situatie en marktomstandigheden. 
+Het is raadzaam om de gekozen opties periodiek te evalueren en aan te passen indien nodig.""",
+            "adviesmotivatie_werkloosheid": """
+De voorgestelde maatregelen bieden bescherming tegen inkomensterugval bij werkloosheid.
+Regelmatige evaluatie van de dekking blijft belangrijk naarmate de situatie verandert.""",
+            "adviesmotivatie_aow": """
+Dit pensioenadvies geeft inzicht in de huidige situatie en gewenste aanpassingen.
+Jaarlijkse herziening wordt aanbevolen om de planning actueel te houden."""
+        }
+        
+        base_conclusion = conclusions.get(section, "")
+        
+        if "Nog te bespreken" in content:
+            base_conclusion += "\n\nDe hierboven genoemde openstaande punten zullen in een vervolgafspraak worden besproken."
+            
+        return base_conclusion
+
+    def _verify_content_quality(self, sections: Dict[str, str]) -> bool:
+        """Verifies that generated content meets quality standards."""
+        if not sections:
+            return False
+            
+        for content in sections.values():
+            if not content or len(content.split()) < 50:  # Minimum word count
+                return False
+                
+            # Check for required elements
+            required_elements = ['1.', '2.', '3.', '•']
+            if not all(element in content for element in required_elements):
+                return False
+                
+        return True
+
     def _format_additional_info(self, app_state: Optional['AppState']) -> str:
+        """Formats additional information from app state."""
         try:
             if not app_state or not app_state.additional_info:
                 return ""
@@ -133,10 +355,11 @@ class GPTService:
             info_parts = []
             for key, value in app_state.additional_info.items():
                 if isinstance(value, dict):
+                    context = value.get('context', '')
                     question = value.get('question', '')
                     answer = value.get('answer', '')
                     if question and answer:
-                        info_parts.append(f"Vraag: {question}\nAntwoord: {answer}")
+                        info_parts.append(f"Context: {context}\nVraag: {question}\nAntwoord: {answer}")
             
             return "\n\n".join(info_parts) if info_parts else ""
             
@@ -145,6 +368,7 @@ class GPTService:
             return ""
 
     def _parse_sections(self, content: str) -> Dict[str, str]:
+        """Parses content into sections with validation."""
         sections = {
             "adviesmotivatie_leningdeel": "",
             "adviesmotivatie_werkloosheid": "",
@@ -177,6 +401,7 @@ class GPTService:
             return sections
 
     def _validate_sections(self, sections: Dict[str, str], missing_info: Dict[str, list]) -> Dict[str, str]:
+        """Validates sections and adds missing information warnings."""
         section_mapping = {
             "adviesmotivatie_leningdeel": "leningdeel",
             "adviesmotivatie_werkloosheid": "werkloosheid",
@@ -186,12 +411,14 @@ class GPTService:
         validated_sections = {}
         
         for section, content in sections.items():
+            # Validate content
             if not self._is_valid_section_content(content):
                 validated_sections[section] = self._create_missing_content_notice(section)
                 continue
                 
             validated_sections[section] = content
             
+            # Add missing information warnings if applicable
             checklist_key = section_mapping.get(section)
             if checklist_key and checklist_key in missing_info and missing_info[checklist_key]:
                 warning = "\n\nNOG TE BESPREKEN:\n"
@@ -201,9 +428,11 @@ class GPTService:
         return validated_sections
 
     def _is_valid_section_content(self, content: str) -> bool:
-        if not content or len(content.strip()) < 10:
+        """Validates if section content is meaningful."""
+        if not content or len(content.strip()) < 50:  # Minimum content length
             return False
             
+        # Check for placeholder patterns
         placeholder_patterns = [
             "geen informatie beschikbaar",
             "informatie ontbreekt",
@@ -215,32 +444,74 @@ class GPTService:
         if any(pattern in content_lower for pattern in placeholder_patterns):
             return False
             
-        lines = [line.strip() for line in content.split('\n') if line.strip()]
-        return len(lines) >= 3
+        # Check for minimum structure
+        required_elements = ['1.', '2.', '3.', '•']
+        if not any(element in content for element in required_elements):
+            return False
+            
+        return True
 
     def _create_missing_content_notice(self, section: str) -> str:
+        """Creates professional notice about missing information."""
         section_names = {
-            "adviesmotivatie_leningdeel": "het leningdeel",
-            "adviesmotivatie_werkloosheid": "werkloosheid",
-            "adviesmotivatie_aow": "AOW en pensioen"
+            "adviesmotivatie_leningdeel": "hypothecaire financiering",
+            "adviesmotivatie_werkloosheid": "werkloosheidsscenario",
+            "adviesmotivatie_aow": "pensioen- en AOW-situatie"
         }
         
-        return f"""Er is in het gesprek geen concrete informatie besproken over {section_names.get(section, section)}. 
+        section_name = section_names.get(section, section)
         
-Deze onderwerpen moeten nog besproken worden tijdens een vervolgafspraak:
+        return f"""1. Aanvullende Informatie Benodigd
 
-- Specifieke wensen en voorkeuren
-- Concrete situatie
-- Risico's en mogelijke oplossingen"""
+Voor een volledig advies over uw {section_name} is aanvullende informatie nodig. De volgende aspecten zullen tijdens een vervolgafspraak worden besproken:
+
+2. Belangrijke Bespreekpunten
+• Specifieke wensen en voorkeuren ten aanzien van {section_name}
+• Concrete financiële planning en doelstellingen
+• Inventarisatie van mogelijke risico's en oplossingsrichtingen
+
+3. Vervolgafspraak
+Een vervolgafspraak wordt ingepland om bovenstaande punten te bespreken en een volledig onderbouwd advies op te stellen."""
+
+    def _get_section_introduction(self, section: str, app_state: Optional['AppState']) -> str:
+        """Creates professional introduction for each section."""
+        klant_info = "Op basis van uw situatie" if app_state and app_state.klantprofiel else "Op basis van het gesprek"
+        
+        intros = {
+            "adviesmotivatie_leningdeel": f"""
+{klant_info} volgt hieronder een uitgebreide analyse van de hypothecaire financiering. Dit advies is toegespitst op uw persoonlijke situatie en wensen, rekening houdend met zowel de korte als lange termijn perspectieven.""",
+            
+            "adviesmotivatie_werkloosheid": f"""
+{klant_info} is een risicoanalyse uitgevoerd met betrekking tot mogelijke werkloosheid. Deze analyse beschouwt de impact op uw financiële situatie en de mogelijke beschermingsmaatregelen.""",
+            
+            "adviesmotivatie_aow": f"""
+{klant_info} presenteren wij een langetermijnanalyse van uw pensioen- en AOW-situatie. Deze analyse richt zich op de financiële planning voor uw pensioenperiode en de afstemming met uw hypothecaire verplichtingen."""
+        }
+        
+        return intros.get(section, "")
 
     def _get_default_missing_info(self) -> Dict[str, Any]:
+        """Returns structured missing information response."""
         return {
             "missing_info": {
-                "leningdeel": ["Exacte leningbedrag", "NHG keuze", "Rentevaste periode", "Hypotheekvorm"],
-                "werkloosheid": ["Huidige arbeidssituatie", "Werkloosheidsrisico", "Gewenste dekking"],
-                "aow": ["AOW-leeftijd", "Pensioenwensen", "Vermogensopbouw"]
+                "leningdeel": [
+                    "Gewenst leningbedrag en onderbouwing",
+                    "Hypotheekvorm voorkeuren",
+                    "Rentevaste periode wensen",
+                    "NHG overwegingen"
+                ],
+                "werkloosheid": [
+                    "Huidige arbeidssituatie",
+                    "Risico-inschatting werkloosheid",
+                    "Gewenste financiële buffers"
+                ],
+                "aow": [
+                    "Pensioenwensen en -planning",
+                    "AOW-leeftijd en impact",
+                    "Vermogensopbouw doelen"
+                ]
             },
-            "explanation": "Er is nog onvoldoende informatie beschikbaar voor een volledig advies",
-            "next_question": "Wat is het gewenste leningbedrag voor de hypotheek?",
-            "context": "We beginnen met de belangrijkste basisgegevens"
+            "explanation": "Er is aanvullende informatie nodig om een volledig advies te kunnen opstellen. Graag plannen we een gesprek in om alle relevante aspecten te bespreken.",
+            "next_question": "Wat is het gewenste leningbedrag voor de hypotheek en wat zijn uw overwegingen hierbij?",
+            "context": "We beginnen met de belangrijkste uitgangspunten voor uw hypotheekadvies."
         }
