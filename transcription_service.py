@@ -16,20 +16,29 @@ logger = logging.getLogger(__name__)
 
 class TranscriptionService:
     def __init__(self):
-        # Initialize OpenAI client
         try:
-            self.openai_client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-        except KeyError:
-            logger.warning("OpenAI API key not found in secrets")
+            # Try to get API key from secrets with better error handling
+            api_key = st.secrets.get("OPENAI_API_KEY")
+            if not api_key:
+                raise ValueError("OpenAI API key not found in secrets")
+                
+            self.openai_client = OpenAI(api_key=api_key)
+            logger.info("OpenAI client initialized successfully")
+            
+        except Exception as e:
+            logger.error(f"Failed to initialize OpenAI client: {str(e)}")
             self.openai_client = None
-
-        # Initialize Groq client only if API key exists
-        self.groq_client = None
+            
+        # Initialize Groq client if available
         try:
-            if st.secrets.get("GROQ_API_KEY"):
+            groq_api_key = st.secrets.get("GROQ_API_KEY")
+            if groq_api_key:
                 from groq import Groq
-                self.groq_client = Groq(api_key=st.secrets.get("GROQ_API_KEY"))
-                logger.info("Groq client initialized")
+                self.groq_client = Groq(api_key=groq_api_key)
+                logger.info("Groq client initialized successfully")
+            else:
+                self.groq_client = None
+                
         except Exception as e:
             logger.info(f"Groq client not initialized: {str(e)}")
             self.groq_client = None
