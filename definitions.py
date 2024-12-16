@@ -201,7 +201,7 @@ INSTRUCTIES:
 Geef alleen de verbeterde, complete tekst terug zonder extra kopjes of secties."""
 
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4-1106-preview",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7
         )
@@ -217,4 +217,4 @@ Geef alleen de verbeterde, complete tekst terug zonder extra kopjes of secties."
 
     except Exception as e:
         logging.error(f"Error improving explanation: {str(e)}")
-        return originele_tekst
+        return originele_tekst 

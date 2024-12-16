@@ -180,13 +180,39 @@ class GPTService:
     def _generate_content(self, formatted_prompt: str) -> Optional[Any]:
         """Generates enhanced content using the LLM."""
         try:
+            system_message = """Je bent een ervaren hypotheekadviseur die gespreksnotities en klantinformatie verwerkt tot professionele rapportages.
+
+    BELANGRIJKE EISEN:
+    1. Schrijf uitgebreide, gedetailleerde secties
+    2. Elk onderdeel moet minimaal 3 paragrafen bevatten
+    3. Gebruik duidelijke nummeringen (1., 2., 3.)
+    4. Zorg voor voldoende diepgang en detail
+    5. Gebruik concrete informatie uit het transcript
+
+    STRUCTUUR PER SECTIE:
+    - Begin met een inleidende alinea
+    - Gebruik genummerde hoofdsecties (1., 2., 3.)
+    - Minimaal 3 paragrafen per hoofdsectie
+    - Eindig met een duidelijke conclusie"""
+
             messages = [
-                SystemMessage(content=self._get_enhanced_system_prompt()),
+                SystemMessage(content=system_message),
                 HumanMessage(content=formatted_prompt)
             ]
             
-            return self.llm.invoke(messages)
+            # Increase temperature slightly for more detailed output
+            response = self.llm.invoke(
+                messages,
+                temperature=0.4,
+                max_tokens=4000
+            )
             
+            if not response or not response.content.strip():
+                logger.error("Empty response from LLM")
+                return None
+                
+            return response
+                
         except Exception as e:
             logger.error(f"Error generating content: {str(e)}")
             return None
@@ -364,19 +390,32 @@ De verzekering biedt concrete bescherming tegen inkomensverlies bij werkloosheid
 
     def _verify_content_quality(self, sections: Dict[str, str]) -> bool:
         """Verifies that generated content meets quality standards."""
-        if not sections:
+        try:
+            if not sections:
+                logger.warning("No sections provided for quality verification")
+                return False
+                
+            for section_name, content in sections.items():
+                # Check for minimum content
+                if not content or len(content.split()) < 50:
+                    logger.warning(f"Section {section_name} has insufficient content length")
+                    return False
+                
+                # Check for minimum structure
+                if not any(marker in content for marker in ['1.', '2.', '3.']):
+                    logger.warning(f"Section {section_name} missing required structure (numbered sections)")
+                    return False
+                
+                # Check for proper formatting
+                if len(content.split('\n\n')) < 3:
+                    logger.warning(f"Section {section_name} lacks proper paragraph separation")
+                    return False
+
+            return True
+                
+        except Exception as e:
+            logger.error(f"Error in content quality verification: {str(e)}")
             return False
-            
-        for content in sections.values():
-            if not content or len(content.split()) < 50:  # Minimum word count
-                return False
-                
-            # Check for required elements
-            required_elements = ['1.', '2.', '3.', '•']
-            if not all(element in content for element in required_elements):
-                return False
-                
-        return True
 
     def _format_additional_info(self, app_state: Optional['AppState']) -> str:
         """Formats additional information from app state."""
