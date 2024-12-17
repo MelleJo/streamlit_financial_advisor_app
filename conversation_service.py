@@ -87,136 +87,134 @@ class ConversationService:
         ])
 
     def analyze_initial_transcript(self, transcript: str) -> Dict[str, Any]:
-        """Analyzes the initial transcript and returns structured information."""
+        """Analyzes transcript and generates dynamic questions based on missing info."""
         try:
-            # First use checklist service to analyze gaps
-            checklist_analysis = self.checklist_service.analyze_transcript(transcript)
-            
-            # Get response from LLM with checklist context
-            messages = self.analysis_prompt.format_messages(
-                transcript=transcript,
-                checklist=json.dumps(CHECKLIST, ensure_ascii=False)
+            messages = [
+                SystemMessage(content="""Je bent een hypotheekadviseur die het gesprek analyseert.
+                Op basis van de checklist en wat er ontbreekt in het transcript, genereer je een relevante 
+                vraag om de belangrijkste ontbrekende informatie te verzamelen.
+                
+                Zorg dat je:
+                1. De checklist gebruikt om ontbrekende informatie te identificeren
+                2. De meest kritische ontbrekende informatie eerst vraagt
+                3. De vraag natuurlijk en conversationeel formuleert
+                4. Aansluit bij wat al wel bekend is uit het transcript"""),
+                HumanMessage(content=f"""
+                TRANSCRIPT:
+                {transcript}
+                
+                CHECKLIST:
+                {json.dumps(CHECKLIST, ensure_ascii=False)}
+                
+                Genereer een specifieke vraag voor de belangrijkste ontbrekende informatie.
+                Geef je antwoord in dit format:
+                {{
+                    "next_question": "je vraag hier",
+                    "context": "waarom je deze vraag stelt",
+                    "missing_items": ["lijst", "van", "ontbrekende", "items"]
+                }}
+                """)
+            ]
+
+            # Use GPT-4o-mini for question generation
+            mini_llm = ChatOpenAI(
+                model="gpt-4o-mini",
+                temperature=0.3,
+                openai_api_key=self.api_key
             )
-            response = self.llm.invoke(messages)
             
-            # Extract content and parse JSON
-            content = response.content
-            logger.info(f"Raw LLM response: {content}")
+            response = mini_llm.invoke(messages)
+            content = response.content.strip()
             
-            # Clean the response if needed
-            content = content.strip()
-            if content.startswith("```json"):
-                content = content[7:-3]
-            elif content.startswith("`"):
-                content = content.strip("`")
-            
-            # Parse JSON
-            result = json.loads(content)
-            
-            # Integrate checklist analysis results
-            result["missing_info"] = checklist_analysis["missing_topics"]
-            
-            # Generate specific question based on missing topics
-            if checklist_analysis["missing_topics"]:
-                first_category = next(iter(checklist_analysis["missing_topics"]))
-                first_missing = checklist_analysis["missing_topics"][first_category][0]
-                result["next_question"] = self._generate_question_for_missing_topic(first_category, first_missing)
-                result["context"] = f"We hebben meer informatie nodig over {CHECKLIST[first_category]['title'].lower()}"
-            
-            logger.info("Successfully analyzed transcript")
-            return result
-            
+            # Process response
+            try:
+                result = json.loads(content)
+                logger.info(f"Generated question: {result['next_question']}")
+                return result
+            except json.JSONDecodeError:
+                logger.error("Failed to parse LLM response as JSON")
+                return {
+                    "next_question": "Wat is het gewenste hypotheekbedrag?",
+                    "context": "Basis informatie nodig voor hypotheekadvies",
+                    "missing_items": ["hypotheekbedrag"]
+                }
+                
         except Exception as e:
-            logger.error(f"Error analyzing transcript: {str(e)}")
+            logger.error(f"Error in initial analysis: {str(e)}")
             return {
-                "complete_info": {"leningdeel": {}, "werkloosheid": {}, "aow": {}},
-                "missing_info": checklist_analysis["missing_topics"] if 'checklist_analysis' in locals() else CHECKLIST,
-                "next_question": "Kun je me vertellen wat het gewenste leningbedrag is?",
-                "context": "We beginnen met de basisinformatie voor je hypotheekaanvraag."
+                "next_question": "Wat is het gewenste hypotheekbedrag?",
+                "context": "Basis informatie nodig voor hypotheekadvies",
+                "missing_items": ["hypotheekbedrag"]
             }
 
     def process_user_response(
-        self, 
-        conversation_history: str, 
-        user_response: str, 
-        missing_info: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        """Processes user response and returns all pending questions."""
+    self, 
+    conversation_history: str, 
+    user_response: str, 
+    missing_info: Dict[str, list]
+) -> Dict[str, Any]:
+        """Processes user response and generates next question based on remaining missing info."""
         try:
-            # Format conversation history into messages
-            messages = []
-            for line in conversation_history.split("\n"):
-                if line.strip():
-                    if line.startswith("AI: "):
-                        messages.append(SystemMessage(content=line[4:]))
-                    elif line.startswith("Klant: "):
-                        messages.append(HumanMessage(content=line[7:]))
-            
-            # Get response from LLM with checklist context
-            prompt_messages = self.conversation_prompt.format_messages(
-                history=messages,
-                user_response=user_response,
-                checklist=json.dumps(CHECKLIST, ensure_ascii=False),
-                missing_info=json.dumps(missing_info, ensure_ascii=False)
+            messages = [
+                SystemMessage(content="""Je bent een hypotheekadviseur in gesprek met een klant.
+                Analyseer het antwoord en bepaal de volgende vraag op basis van nog ontbrekende informatie.
+                
+                Zorg dat je:
+                1. Het antwoord verwerkt in je begrip van de situatie
+                2. Kijkt welke informatie nog ontbreekt
+                3. Een logische vervolgvraag stelt
+                4. De vraag natuurlijk en conversationeel formuleert"""),
+                HumanMessage(content=f"""
+                CONVERSATIE TOT NU TOE:
+                {conversation_history}
+                
+                LAATSTE ANTWOORD KLANT:
+                {user_response}
+                
+                NOG ONTBREKENDE INFORMATIE:
+                {json.dumps(missing_info, ensure_ascii=False)}
+                
+                Bepaal de volgende vraag. Geef je antwoord in dit format:
+                {{
+                    "next_question": "je vraag hier",
+                    "context": "waarom je deze vraag stelt",
+                    "processed_info": {{"categorie": "verwerkte informatie"}},
+                    "remaining_missing_info": ["nog ontbrekende items"]
+                }}
+                """)
+            ]
+
+            # Use GPT-4o-mini for dynamic question generation
+            mini_llm = ChatOpenAI(
+                model="gpt-4o-mini",
+                temperature=0.3,
+                openai_api_key=self.api_key
             )
             
-            response = self.llm.invoke(prompt_messages)
-            
-            # Extract content and parse JSON
+            response = mini_llm.invoke(messages)
             content = response.content.strip()
-            if content.startswith("```json"):
-                content = content[7:-3]
-            elif content.startswith("`"):
-                content = content.strip("`")
             
-            result = json.loads(content)
-            logger.info(f"Processed user response: {result}")
-            
-            # Generate all pending questions
-            questions = []
-            remaining_info = result.get("remaining_missing_info", {})
-            
-            if isinstance(remaining_info, list):
-                # Handle list format
-                for missing_item in remaining_info:
-                    questions.append({
-                        "question": f"Kun je meer vertellen over {missing_item.lower()}?",
-                        "context": "We hebben aanvullende informatie nodig",
-                        "category": "general",
-                        "topic": missing_item
-                    })
-            else:
-                # Handle dictionary format
-                for category, items in remaining_info.items():
-                    if isinstance(items, list):
-                        for item in items:
-                            question = self._generate_question_for_missing_topic(category, item)
-                            questions.append({
-                                "question": question,
-                                "context": f"Informatie over {CHECKLIST.get(category, {}).get('title', category).lower()}",
-                                "category": category,
-                                "topic": item
-                            })
-
-            result["questions"] = questions
-            result["all_topics_complete"] = len(questions) == 0
-
-            logger.info("Successfully processed user response")
-            return result
-            
+            # Process response
+            try:
+                result = json.loads(content)
+                logger.info(f"Generated follow-up question: {result['next_question']}")
+                return result
+            except json.JSONDecodeError:
+                logger.error("Failed to parse LLM response as JSON")
+                return self._get_default_question_response()
+                
         except Exception as e:
             logger.error(f"Error processing response: {str(e)}")
-            return {
-                "questions": [{
-                    "question": "Kun je dat nog eens anders formuleren?",
-                    "context": "Ik begreep je antwoord niet helemaal.",
-                    "category": "general",
-                    "topic": "clarification"
-                }],
-                "processed_info": {},
-                "remaining_missing_info": missing_info,
-                "all_topics_complete": False
-            }
+            return self._get_default_question_response()
+        
+    def _get_default_question_response(self) -> Dict[str, Any]:
+        """Returns a default question response if processing fails."""
+        return {
+            "next_question": "Kunt u meer vertellen over uw inkomenssituatie?",
+            "context": "We hebben meer informatie nodig over uw financiële situatie",
+            "processed_info": {},
+            "remaining_missing_info": ["inkomen"]
+        }
 
     def _generate_question_for_missing_topic(self, category: str, missing_item: str) -> str:
         """Generates a specific question based on the missing checklist item."""
