@@ -39,6 +39,90 @@ class GPTService:
             logger.error(f"Error loading prompt template: {str(e)}")
             self.prompt_template = ""
 
+
+
+    def _extract_values_from_content(self, content: str) -> Dict[str, str]:
+        """Extracts values from content for template formatting."""
+        values = {}
+        
+        try:
+            # Extract numerical values with units
+            money_matches = re.finditer(r'€\s*(\d{1,3}(?:\.\d{3})*(?:,\d{2})?|\d+)', content)
+            percentage_matches = re.finditer(r'(\d+(?:,\d{1,2})?)\s*%', content)
+            year_matches = re.finditer(r'(\d+)\s*(?:jaar|jr)', content)
+            
+            # Store found values based on context
+            for match in money_matches:
+                amount = match.group(1).replace('.', '').replace(',', '.')
+                if 'koopsom' not in values and 'koopsom' in content[:match.start()].lower():
+                    values['koopsom'] = match.group(0)
+                elif 'leningbedrag' not in values and 'leningbedrag' in content[:match.start()].lower():
+                    values['leenbedrag'] = match.group(0)
+                elif 'hypotheeklasten' not in values and 'maandlast' in content[:match.start()].lower():
+                    values['hypotheeklasten'] = match.group(0)
+                elif 'inkomen' not in values and 'inkomen' in content[:match.start()].lower():
+                    values['inkomen'] = match.group(0)
+                elif 'dekking' not in values and 'dekking' in content[:match.start()].lower():
+                    values['dekking'] = match.group(0)
+
+            # Extract text-based values
+            if 'annuïteiten' in content.lower():
+                values['hypotheekvorm'] = 'annuïteitenhypotheek'
+            elif 'lineair' in content.lower():
+                values['hypotheekvorm'] = 'lineaire hypotheek'
+                
+            # Extract NHG status
+            if 'nhg' in content.lower() or 'nationale hypotheek garantie' in content.lower():
+                values['nhg_status'] = 'Nationale Hypotheek Garantie'
+            else:
+                values['nhg_status'] = 'zonder NHG'
+
+            # Extract periods from year matches
+            for match in year_matches:
+                if 'looptijd' not in values and 'looptijd' in content[:match.start()].lower():
+                    values['looptijd'] = f"{match.group(1)} jaar"
+                elif 'rentevaste_periode' not in values and 'rentevast' in content[:match.start()].lower():
+                    values['rentevaste_periode'] = f"{match.group(1)} jaar"
+
+            # Set default values for missing required fields
+            required_fields = {
+                'koopsom': '€ 0',
+                'leenbedrag': '€ 0',
+                'hypotheeklasten': '€ 0',
+                'inkomen': '€ 0',
+                'dekking': '€ 0',
+                'hypotheekvorm': 'nader te bepalen hypotheekvorm',
+                'looptijd': '30 jaar',
+                'rentevaste_periode': '10 jaar',
+                'nhg_status': 'nader te bepalen',
+                'eigen_middelen': 'een nader te bepalen bedrag aan',
+                'pensioen_details': 'De specifieke pensioenvoorzieningen worden in kaart gebracht'
+            }
+            
+            # Fill in any missing required values with defaults
+            for field, default in required_fields.items():
+                if field not in values:
+                    values[field] = default
+
+            return values
+            
+        except Exception as e:
+            logger.error(f"Error extracting values from content: {str(e)}")
+            # Return defaults for all fields if extraction fails
+            return {
+                'koopsom': '€ 0',
+                'leenbedrag': '€ 0',
+                'hypotheeklasten': '€ 0',
+                'inkomen': '€ 0',
+                'dekking': '€ 0',
+                'hypotheekvorm': 'nader te bepalen hypotheekvorm',
+                'looptijd': '30 jaar',
+                'rentevaste_periode': '10 jaar',
+                'nhg_status': 'nader te bepalen',
+                'eigen_middelen': 'een nader te bepalen bedrag aan',
+                'pensioen_details': 'De specifieke pensioenvoorzieningen worden in kaart gebracht'
+            }
+        
     def analyze_initial_transcript(self, transcript: str) -> Dict[str, Any]:
         """Analyzes the initial transcript to identify missing information."""
         try:
