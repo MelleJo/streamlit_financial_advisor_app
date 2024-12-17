@@ -264,7 +264,7 @@ AANDACHTSPUNTEN:
             enhanced_content.append(self._get_section_introduction(section, app_state))
             
             # Process main content
-            formatted_content = self._format_section_content(content)
+            formatted_content = self._format_section_content(content, section)
             enhanced_content.append(formatted_content)
             
             # Add contextual information
@@ -283,8 +283,8 @@ AANDACHTSPUNTEN:
 
         return enhanced_sections
 
-    def _format_section_content(self, content: str) -> str:
-        section_template = HYPOTHEEK_TEMPLATES.get(self.current_section)
+    def _format_section_content(self, content: str, current_section: str) -> str:
+        section_template = HYPOTHEEK_TEMPLATES.get(current_section)
         if not section_template:
             return self._format_generic_content(content)
         
