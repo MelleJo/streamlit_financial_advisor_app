@@ -1,8 +1,3 @@
-"""
-File: gpt_service.py
-Provides sophisticated GPT-based analysis and advice generation for the AI Hypotheek Assistent.
-"""
-
 import logging
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
@@ -14,6 +9,7 @@ from conversation_service import ConversationService
 from checklist_analysis_service import ChecklistAnalysisService, CHECKLIST
 from datetime import datetime
 import re
+from templates import HYPOTHEEK_TEMPLATES
 
 logging.basicConfig(
     level=logging.INFO,
@@ -219,26 +215,38 @@ class GPTService:
             return None
 
     def _get_enhanced_system_prompt(self) -> str:
-        """Returns an enhanced system prompt focused on content from source materials."""
-        return """Je bent een ervaren hypotheekadviseur die gespreksnotities en klantinformatie verwerkt tot professionele rapportages.
+        return """Je bent een ervaren hypotheekadviseur die gespreksnotities verwerkt tot professionele rapportages.
 
-        BELANGRIJKE RICHTLIJNEN:
-        - VERWIJDER alle adviseursnamen, bedrijfsnamen en datums
-        - Gebruik ALLEEN relevante financiële en hypotheekinformatie
-        - Begin direct met de inhoudelijke informatie
-        - Schrijf in een objectieve, professionele stijl
+KWALITEITSEISEN VOOR ALLE SECTIES:
+- Schrijf in volledige, vloeiende zinnen
+- Gebruik professionele financiële terminologie
+- Maak logische verbanden tussen informatie
+- Zorg voor consistente diepgang in alle onderdelen
+- Gebruik concrete cijfers en details uit de bronnen
 
-        STRUCTUUR:
-        - Start direct met de situatiebeschrijving
-        - Gebruik duidelijke secties met nummering
-        - Focus op financiële details en voorwaarden
-        - Eindig met concrete conclusies
+STRUCTUUR PER SECTIE:
+1. Begin met een duidelijke inleiding
+   - Schets de context
+   - Geef het doel van de analyse
+   - Verwijs naar de specifieke situatie
 
-        INHOUD:
-        - Beschrijf alleen relevante financiële informatie
-        - Gebruik specifieke cijfers en voorwaarden
-        - Vermijd persoonlijke referenties naar adviseurs
-        - Focus op de klantsituatie en gekozen oplossingen"""
+2. Hoofdonderdelen (minimaal drie)
+   - Begin elk onderdeel met een duidelijke titel
+   - Werk informatie uit in volledige alinea's
+   - Verbind feiten met analyse
+   - Onderbouw keuzes en adviezen
+
+3. Afronding
+   - Vat belangrijkste punten samen
+   - Trek duidelijke conclusies
+   - Relateer aan klantdoelen
+
+AANDACHTSPUNTEN:
+- Vermijd bullet points
+- Geen verwijzingen naar toekomstige gesprekken
+- Geen adviseursnamen of datums
+- Integreer alle relevante informatie uit transcript en klantprofiel
+- Maak financiële impact concreet met cijfers"""
 
     def _enhance_sections(self, sections: Dict[str, str], app_state: Optional['AppState']) -> Dict[str, str]:
         """Enhances sections with additional context and structure."""
@@ -276,40 +284,37 @@ class GPTService:
         return enhanced_sections
 
     def _format_section_content(self, content: str) -> str:
-        """Formats section content into professional, flowing text without personal identifiers."""
-        # Remove advisor and company identifiers and dates
-        content = re.sub(r'In het gesprek met [^,]+(, \d{1,2} [a-zA-Z]+ \d{4})?', '', content)
-        content = re.sub(r'\b(op|van) \d{1,2} [a-zA-Z]+ \d{4}', '', content)
-        content = re.sub(r'Marcel van der Beld|Veldhuisadvies WV', '', content)
+        section_template = HYPOTHEEK_TEMPLATES.get(self.current_section)
+        if not section_template:
+            return self._format_generic_content(content)
         
-        paragraphs = content.split('\n')
-        formatted_content = []
-        current_paragraph = []
+        # Extract values from content
+        values = self._extract_values_from_content(content)
         
-        for line in paragraphs:
-            line = line.strip()
-            if not line:
-                continue
-                
-            # For this example, it should start directly with:
-            # "De koop van een woning in Heerde werd besproken..."
-            if line.startswith('In het gesprek'):
-                line = re.sub(r'^.*?, werd de', 'De', line)
-            
-            current_paragraph.append(line)
-            
-            # Add paragraph break on section numbers
-            if line.strip().startswith(('1.', '2.', '3.')):
-                if current_paragraph:
-                    formatted_content.append(' '.join(current_paragraph[:-1]))
-                    current_paragraph = [line]
+        try:
+            formatted_content = section_template.format(**values)
+            return formatted_content
+        except KeyError as e:
+            logger.error(f"Missing value in template: {str(e)}")
+            return self._format_generic_content(content)
 
-        # Add any remaining paragraph
-        if current_paragraph:
-            formatted_content.append(' '.join(current_paragraph))
-            
-        # Join all paragraphs with proper spacing
-        return '\n\n'.join(formatted_content)
+    def _create_missing_content_notice(self, section: str) -> str:
+        section_names = {
+            "adviesmotivatie_leningdeel": "de hypothecaire financiering",
+            "adviesmotivatie_werkloosheid": "het werkloosheidsscenario",
+            "adviesmotivatie_aow": "de pensioen- en AOW-situatie"
+        }
+        
+        section_name = section_names.get(section, section)
+        
+        return f"""1. Inventarisatie
+Op basis van het gesprek is een eerste analyse gemaakt van {section_name}. De algemene uitgangspunten en wensen zijn besproken.
+
+2. Beschikbare Informatie
+De financiële kaders en persoonlijke voorkeuren zijn geïnventariseerd. Deze vormen de basis voor verdere uitwerking van de mogelijkheden.
+
+3. Analyse
+De besproken opties worden verder uitgewerkt op basis van de specifieke situatie en wensen. De impact van verschillende scenario's wordt daarbij in kaart gebracht."""
 
     def _format_werkloosheid_section(self, client_info: Dict[str, Any]) -> str:
         """Creates a professionally formatted werkloosheid section."""
@@ -512,29 +517,22 @@ De verzekering biedt concrete bescherming tegen inkomensverlies bij werkloosheid
         return True
 
     def _create_missing_content_notice(self, section: str) -> str:
-        """Creates a professional notice about missing information based on source materials."""
         section_names = {
-            "adviesmotivatie_leningdeel": "hypothecaire financiering",
-            "adviesmotivatie_werkloosheid": "werkloosheidsscenario",
-            "adviesmotivatie_aow": "pensioen- en AOW-situatie"
+            "adviesmotivatie_leningdeel": "de hypothecaire financiering",
+            "adviesmotivatie_werkloosheid": "het werkloosheidsscenario",
+            "adviesmotivatie_aow": "de pensioen- en AOW-situatie"
         }
         
         section_name = section_names.get(section, section)
         
-        return f"""1. Beschikbare Informatie
-    De volgende aspecten met betrekking tot {section_name} zijn in kaart gebracht op basis van het gesprek:
-    • Algemene uitgangspunten zijn besproken
-    • Globale wensen zijn geïnventariseerd
+        return f"""1. Inventarisatie
+Op basis van het gesprek is een eerste analyse gemaakt van {section_name}. De algemene uitgangspunten en wensen zijn besproken.
 
-    2. Aanvullende Aspecten
-    Voor een compleet beeld zijn de volgende aspecten relevant:
-    • Specifieke wensen ten aanzien van {section_name}
-    • Concrete financiële doelstellingen
-    • Risico's en mogelijke maatregelen
+2. Beschikbare Informatie
+De financiële kaders en persoonlijke voorkeuren zijn geïnventariseerd. Deze vormen de basis voor verdere uitwerking van de mogelijkheden.
 
-    3. Huidige Status
-    Op basis van de beschikbare informatie is een eerste inventarisatie gemaakt. 
-    Verdere detaillering van bovenstaande punten zal het advies verder aanscherpen."""
+3. Analyse
+De besproken opties worden verder uitgewerkt op basis van de specifieke situatie en wensen. De impact van verschillende scenario's wordt daarbij in kaart gebracht."""
 
     def _get_section_introduction(self, section: str, app_state: Optional['AppState']) -> str:
         """Creates professional introduction for each section."""

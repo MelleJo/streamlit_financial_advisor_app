@@ -9,6 +9,7 @@ from typing import Dict, Any, Optional, List
 from langchain_openai import ChatOpenAI
 import json
 from app_state import AppState
+from templates import FP_TEMPLATES
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -89,7 +90,7 @@ class FPService:
         """Generate the complete FP report based on all collected information."""
         try:
             return {
-                "samenvatting": app_state.fp_state.samenvatting,
+                "samenvatting": self._format_section_content(app_state.fp_state.samenvatting, "samenvatting"),
                 "uitwerking_advies": app_state.fp_state.uitwerking_advies,
                 "huidige_situatie": app_state.fp_state.huidige_situatie,
                 "situatie_later": app_state.fp_state.situatie_later,
@@ -101,6 +102,26 @@ class FPService:
         except Exception as e:
             logger.error(f"Error generating FP report: {str(e)}")
             return self._get_default_report()
+
+    def _format_section_content(self, content: str, section: str) -> str:
+        section_template = FP_TEMPLATES.get(section)
+        if not section_template:
+            return content
+        
+        # Extract values from content
+        values = self._extract_values_from_content(content)
+        
+        try:
+            formatted_content = section_template.format(**values)
+            return formatted_content
+        except KeyError as e:
+            logger.error(f"Missing value in template: {str(e)}")
+            return content
+
+    def _extract_values_from_content(self, content: str) -> Dict[str, Any]:
+        # Placeholder for extracting values from content
+        # This should be implemented based on actual content structure
+        return {}
 
     def _get_default_analysis(self) -> Dict[str, Any]:
         """Return default analysis structure when processing fails."""
