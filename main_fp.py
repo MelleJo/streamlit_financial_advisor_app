@@ -1,8 +1,4 @@
-"""
-File: main_fp.py
-Main UI flow for the Financial Planning module.
-"""
-
+"""Main UI flow for the Financial Planning module."""
 import streamlit as st
 import logging
 from typing import Dict, Any
@@ -17,7 +13,7 @@ from transcription_service import TranscriptionService
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def render_fp_module(app_state, services):
+async def render_fp_module(app_state, services):
     """Main render function for FP module."""
     st.title("Financiële Planning Adviseur 📋")
     
@@ -31,7 +27,7 @@ def render_fp_module(app_state, services):
     if app_state.step == "input":
         render_input_section(app_state, services)
     elif app_state.step == "analysis":
-        render_analysis_section(app_state, fp_service)
+        await render_analysis_section(app_state, fp_service)
     elif app_state.step == "qa":
         render_qa_section(app_state, fp_service)
     elif app_state.step == "report":
