@@ -271,6 +271,7 @@ Volg de structuur van de standaard teksten maar personaliseer de inhoud.""")
                 
         except Exception as e:
             logger.error(f"Error generating report: {str(e)}")
+
             return self._get_default_report()
 
     def _generate_final_section_content(self, section: str, analysis: Dict[str, Any], qa_history: List[Dict[str, Any]]) -> Optional[str]:
@@ -818,4 +819,3 @@ De financiële planning sluit aan bij de gewenste situatie na pensionering."""
             notice += f"\n• {item}"
 
         return notice
-</write_to_file>
