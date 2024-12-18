@@ -141,11 +141,11 @@ def start_analysis(transcript, app_state):
     app_state.step = "analysis"
     st.rerun()
 
-def render_analysis_section(app_state, fp_service):
+async def render_analysis_section(app_state, fp_service):
     """Render the analysis section."""
     try:
         with st.spinner("Analyse wordt uitgevoerd..."):
-            result = fp_service.process_input(
+            result = await fp_service.process_input(
                 app_state.fp_state.transcript,
                 app_state.fp_state.klantprofiel
             )
