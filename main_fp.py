@@ -13,7 +13,7 @@ from transcription_service import TranscriptionService
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-async def render_fp_module(app_state, services):
+def render_fp_module(app_state, services):
     """Main render function for FP module."""
     st.title("Financiële Planning Adviseur 📋")
     
@@ -27,7 +27,7 @@ async def render_fp_module(app_state, services):
     if app_state.step == "input":
         render_input_section(app_state, services)
     elif app_state.step == "analysis":
-        await render_analysis_section(app_state, fp_service)
+        render_analysis_section(app_state, fp_service)
     elif app_state.step == "qa":
         render_qa_section(app_state, fp_service)
     elif app_state.step == "report":
@@ -137,11 +137,11 @@ def start_analysis(transcript, app_state):
     app_state.step = "analysis"
     st.rerun()
 
-async def render_analysis_section(app_state, fp_service):
+def render_analysis_section(app_state, fp_service):
     """Render the analysis section."""
     try:
         with st.spinner("Analyse wordt uitgevoerd..."):
-            result = await fp_service.process_input(
+            result = fp_service.process_input(
                 app_state.fp_state.transcript,
                 app_state.fp_state.klantprofiel
             )
