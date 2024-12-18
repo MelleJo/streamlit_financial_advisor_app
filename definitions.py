@@ -5,7 +5,7 @@ This module provides:
 1. A comprehensive dictionary of mortgage-related terms and their explanations in Dutch,
    covering key concepts like NHG, mortgage types, fixed interest periods, etc.
 2. A function to improve explanations by integrating basic definitions into the original
-   advice text in a natural and professional way using GPT-4.
+   advice text in a natural and professional way using gpt-4o.
 """
 import logging
 
@@ -201,7 +201,7 @@ INSTRUCTIES:
 Geef alleen de verbeterde, complete tekst terug zonder extra kopjes of secties."""
 
         response = client.chat.completions.create(
-            model="gpt-4-1106-preview",
+            model="gpt-4o-1106-preview",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7
         )

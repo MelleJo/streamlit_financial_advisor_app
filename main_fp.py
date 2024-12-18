@@ -135,7 +135,7 @@ def start_analysis(transcript, app_state):
     """Start the analysis process with the transcript."""
     app_state.fp_state.transcript = transcript
     app_state.step = "analysis"
-    st.experimental_rerun()
+    st.rerun()
 
 async def render_analysis_section(app_state, fp_service):
     """Render the analysis section."""
@@ -152,10 +152,10 @@ async def render_analysis_section(app_state, fp_service):
             if result.get("missing_info"):
                 app_state.step = "qa"
                 st.warning("Er ontbreekt nog enkele informatie")
-                st.experimental_rerun()
+                st.rerun()
             else:
                 app_state.step = "report"
-                st.experimental_rerun()
+                st.rerun()
         else:
             st.error("Er is een fout opgetreden bij de analyse")
             
@@ -176,7 +176,7 @@ def render_qa_section(app_state, fp_service):
         if not questions:
             st.success("✅ Alle benodigde informatie is verzameld")
             app_state.step = "report"
-            st.experimental_rerun()
+            st.rerun()
         
         for q in questions:
             st.markdown(f"""
@@ -209,9 +209,9 @@ async def process_qa_audio(audio, app_state, fp_service):
             if result.get("is_complete"):
                 st.success("✅ Alle informatie compleet")
                 app_state.step = "report"
-                st.experimental_rerun()
+                st.rerun()
             else:
-                st.experimental_rerun()
+                st.rerun()
 
 def render_report_section(app_state, fp_service):
     """Render the final report section."""

@@ -2,7 +2,7 @@
 File: conversation_service.py
 Manages the conversational flow and analysis for the AI Hypotheek Assistent.
 This service handles the interactive dialogue between the user and the AI advisor,
-utilizing GPT-4 to:
+utilizing gpt-4o to:
 1. Analyze transcripts to identify complete and missing information
 2. Process user responses and determine appropriate follow-up questions
 3. Maintain conversation context and history
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 class ConversationService:
     def __init__(self, api_key: str):
         self.llm = ChatOpenAI(
-            model="gpt-4o",
+            model="gpt-4oo",
             temperature=0.3,
             api_key=st.secrets["OPENAI_API_KEY"]
         )
@@ -116,9 +116,9 @@ class ConversationService:
                 """)
             ]
 
-            # Use GPT-4o-mini for question generation
+            # Use gpt-4oo-mini for question generation
             mini_llm = ChatOpenAI(
-                model="gpt-4o-mini",
+                model="gpt-4oo-mini",
                 temperature=0.3,
                 openai_api_key=self.api_key
             )
@@ -184,9 +184,9 @@ class ConversationService:
                 """)
             ]
 
-            # Use GPT-4o-mini for dynamic question generation
+            # Use gpt-4oo-mini for dynamic question generation
             mini_llm = ChatOpenAI(
-                model="gpt-4o-mini",
+                model="gpt-4oo-mini",
                 temperature=0.3,
                 openai_api_key=self.api_key
             )

@@ -166,6 +166,6 @@ def render_question_recorder(
                                 'conversation_history': st.session_state.conversation_history
                             })
                         else:
-                            st.experimental_rerun()
+                            st.rerun()
         
         st.markdown('</div>', unsafe_allow_html=True)

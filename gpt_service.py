@@ -21,7 +21,7 @@ class GPTService:
     def __init__(self, api_key: str):
         """Initialize the GPT service with enhanced configuration."""
         self.llm = ChatOpenAI(
-            model="gpt-4o",
+            model="gpt-4oo",
             temperature=0.4,  # Balanced between creativity and consistency
             openai_api_key=api_key,
             max_tokens=4000,  # Ensure enough space for detailed responses

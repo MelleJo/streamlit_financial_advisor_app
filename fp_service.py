@@ -12,7 +12,7 @@ class FPService:
     def __init__(self, api_key: str):
         """Initialize the FP service with required dependencies."""
         self.llm = ChatOpenAI(
-            model="gpt-4",
+            model="gpt-4o",
             temperature=0.2,
             openai_api_key=api_key
         )
