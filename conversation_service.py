@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 class ConversationService:
     def __init__(self, api_key: str):
         self.llm = ChatOpenAI(
-            model="gpt-4oo",
+            model="gpt-4o",
             temperature=0.3,
             api_key=st.secrets["OPENAI_API_KEY"]
         )
@@ -116,9 +116,9 @@ class ConversationService:
                 """)
             ]
 
-            # Use gpt-4oo-mini for question generation
+            # Use gpt-4o-mini for question generation
             mini_llm = ChatOpenAI(
-                model="gpt-4oo-mini",
+                model="gpt-4o-mini",
                 temperature=0.3,
                 openai_api_key=self.api_key
             )
@@ -184,9 +184,9 @@ class ConversationService:
                 """)
             ]
 
-            # Use gpt-4oo-mini for dynamic question generation
+            # Use gpt-4o-mini for dynamic question generation
             mini_llm = ChatOpenAI(
-                model="gpt-4oo-mini",
+                model="gpt-4o-mini",
                 temperature=0.3,
                 openai_api_key=self.api_key
             )

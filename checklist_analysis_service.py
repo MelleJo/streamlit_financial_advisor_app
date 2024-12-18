@@ -1,6 +1,6 @@
 """
 File: checklist_analysis_service.py
-Handles intelligent analysis of mortgage advice transcripts using gpt-4oo-mini.
+Handles intelligent analysis of mortgage advice transcripts using gpt-4o-mini.
 """
 import logging
 from typing import Dict, Any, Optional
@@ -48,7 +48,7 @@ class ChecklistAnalysisService:
     def __init__(self, api_key: str):
         """Initialize the service with OpenAI API key."""
         self.llm = ChatOpenAI(
-            model="gpt-4oo-mini",
+            model="gpt-4o-mini",
             temperature=0.1,
             openai_api_key=api_key
         )
