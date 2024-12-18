@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 class ConversationService:
     def __init__(self, api_key: str):
         self.llm = ChatOpenAI(
-            model="gpt-4o-2024-08-06",
+            model="gpt-4o",
             temperature=0.3,
             api_key=st.secrets["OPENAI_API_KEY"]
         )

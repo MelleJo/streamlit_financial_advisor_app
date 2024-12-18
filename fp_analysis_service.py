@@ -11,7 +11,7 @@ from langchain_openai import ChatOpenAI
 class FPAnalysisService:
     def __init__(self, api_key: str):
         self.llm = ChatOpenAI(
-            model="gpt-4o-2024-08-06",
+            model="gpt-4o",
             temperature=0.2,
             openai_api_key=api_key
         )

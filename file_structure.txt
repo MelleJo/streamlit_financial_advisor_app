@@ -1,0 +1,39 @@
+- .env.example: Example environment configuration file.
+- app_state.py: Manages the application state.
+- audio_service.py: Handles audio-related services.
+- checklist_analysis_service.py: Analyzes checklists.
+- checklist_component.py: Defines checklist components.
+- conversation_service.py: Manages conversation services.
+- conversation_ui.py: User interface for conversations.
+- definitions.py: Contains various definitions used in the project.
+- fp_analysis_service.py: Financial planning analysis services.
+- fp_components.py: Components related to financial planning.
+- fp_report_service.py: Generates financial planning reports.
+- fp_service.py: Core financial planning services.
+- fp_state.py: Manages the state for financial planning.
+- fp_ui_components.py: UI components for financial planning.
+- gpt_service.py: GPT-related services.
+- main.py: Main entry point of the application.
+- packages.txt: List of packages used in the project.
+- prompt_template.txt: Template for prompts.
+- question_recorder.py: Records questions.
+- README.md: Project documentation.
+- requirements.txt: Python dependencies for the project.
+- templates.py: Template management.
+- transcription_service.py: Handles transcription services.
+- ui_components.py: General UI components.
+
+Directories:
+- components/
+  - ui/
+    - alert.jsx: UI component for alerts.
+    - card.jsx: UI component for cards.
+
+- Source_material/
+  - consumer-profile - example.pdf: Example consumer profile document.
+  - Test_voor_hypotheek_AI.wav: Test audio file for AI mortgage.
+  - Voorbeeld Marcel/
+    - FW_ Bestanden voor hypotheekrapport mbv AI [AC137997_I56267304]/
+      - Aan. hyp. 20 jr vast, ber. basis voor aanvraag en rapportage-fastlane.pdf: PDF document related to mortgage application.
+      - consumer-profile - vragenlijst (5).pdf: Consumer profile questionnaire.
+      - Ingesproken bestand R en P door mvdb 16-12-2024.m4a: Recorded audio file.
