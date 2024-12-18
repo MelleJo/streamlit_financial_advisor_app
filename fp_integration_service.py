@@ -1,8 +1,3 @@
-"""
-File: fp_integration_service.py
-Coordinates all Financial Planning components and handles the overall flow.
-"""
-
 import logging
 from typing import Dict, Any, List, Optional, Tuple
 from dataclasses import dataclass
@@ -51,7 +46,7 @@ class FPIntegrationService:
             return {
                 "status": "success",
                 "missing_info": self.state.missing_info,
-                "next_questions": self._generate_follow_up_questions()
+                "next_questions": self.get_next_questions()
             }
             
         except Exception as e:
@@ -84,7 +79,7 @@ class FPIntegrationService:
             return {
                 "status": "success",
                 "is_complete": is_complete,
-                "next_questions": [] if is_complete else self._generate_follow_up_questions(),
+                "next_questions": [] if is_complete else self.get_next_questions(),
                 "updated_sections": updated_analysis.get("updated_sections", [])
             }
             
@@ -126,6 +121,10 @@ class FPIntegrationService:
             return True
             
         return all(not items for items in self.state.missing_info.values())
+
+    def get_next_questions(self) -> List[Dict[str, Any]]:
+        """Public method to get the next questions."""
+        return self._generate_follow_up_questions()
 
     def _generate_follow_up_questions(self) -> List[Dict[str, Any]]:
         """Generate follow-up questions based on missing information."""
