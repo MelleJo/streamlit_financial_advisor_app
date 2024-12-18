@@ -1,5 +1,6 @@
 import logging
 import json
+import re  # Added import for regular expressions
 from typing import Dict, Any, List, Optional, Tuple
 from dataclasses import dataclass
 from langchain_openai import ChatOpenAI
@@ -68,7 +69,8 @@ class FPAnalysisService:
             messages = [
                 SystemMessage(content="""Je bent een ervaren financieel planner die klantgesprekken analyseert.
 Extraheer alle relevante informatie voor een financieel plan uit het transcript en klantprofiel.
-Focus op concrete cijfers, wensen en doelstellingen."""),
+Focus op concrete cijfers, wensen en doelstellingen.
+Geef je antwoord als geldige JSON zonder codeblokken of extra tekst."""),
                 HumanMessage(content=f"""
 Analyseer deze input voor een financieel plan:
 
@@ -98,12 +100,20 @@ Geef je antwoord in dit JSON format:
         "huidig": "bedrag",
         "planning": "beschrijving"
     }}
-}}""")
+}}
+
+Let op: Geef je antwoord als geldige JSON zonder codeblokken of extra tekst.""")
             ]
             
             response = self.llm.invoke(messages)
             logger.info(f"Response content: {response.content}")  # Added logging
-            return json.loads(response.content)
+
+            # Strip code block markers if present
+            content = response.content.strip()
+            content = re.sub(r'^```[a-z]*\n', '', content)
+            content = re.sub(r'\n```$', '', content)
+
+            return json.loads(content)
                 
         except Exception as e:
             logger.error(f"Error extracting key information: {str(e)}")
@@ -252,7 +262,7 @@ Volg de structuur van de standaard teksten maar personaliseer de inhoud.""")
             "section_drafts": {},
             "graphs_needed": {}
         }
-
+    
     async def generate_report(self, analysis: Dict[str, Any], app_state: Any) -> Dict[str, Any]:
         """Generate the final report based on analysis and app state."""
         try:
