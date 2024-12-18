@@ -1,9 +1,3 @@
-"""
-File: fp_service.py
-Handles Financial Planning (FP) specific functionality including report generation,
-data analysis, and processing of advisor recordings.
-"""
-
 import logging
 from typing import Dict, Any, Optional, List
 from langchain_openai import ChatOpenAI
@@ -18,7 +12,7 @@ class FPService:
     def __init__(self, api_key: str):
         """Initialize the FP service with required dependencies."""
         self.llm = ChatOpenAI(
-            model="gpt-4o",
+            model="gpt-4",
             temperature=0.2,
             openai_api_key=api_key
         )
@@ -35,31 +29,31 @@ class FPService:
             "actiepunten": ["client", "veldhuis"]
         }
 
-    def analyze_transcript(self, transcript: str) -> Dict[str, Any]:
+    async def analyze_transcript(self, transcript: str) -> Dict[str, Any]:
         """Analyze the initial transcript for FP report."""
         try:
             system_message = {
                 "role": "system",
                 "content": """Je bent een ervaren financieel adviseur die transcripten analyseert voor financiële planning.
-                Extraheer de belangrijkste informatie en structureer deze volgens het gevraagde format."""
+Extraheer de belangrijkste informatie en structureer deze volgens het gevraagde format."""
             }
 
             user_message = {
                 "role": "user",
                 "content": f"""
-                Analyseer dit transcript voor een financieel plan:
+Analyseer dit transcript voor een financieel plan:
 
-                {transcript}
+{transcript}
 
-                Geef je antwoord in dit JSON format:
-                {{
-                    "netto_besteedbaar_inkomen": "bedrag + toelichting",
-                    "hoofdpunten": ["punt 1", "punt 2", "punt 3"],
-                    "kernadvies": "korte samenvatting van het advies"
-                }}"""
+Geef je antwoord in dit JSON format:
+{{
+    "netto_besteedbaar_inkomen": "bedrag + toelichting",
+    "hoofdpunten": ["punt 1", "punt 2", "punt 3"],
+    "kernadvies": "korte samenvatting van het advies"
+}}"""
             }
 
-            response = self.llm.invoke([system_message, user_message])
+            response = await self.llm.invoke([system_message, user_message])
             content = response.content.strip()
             
             try:
@@ -72,11 +66,11 @@ class FPService:
             logger.error(f"Error analyzing transcript: {str(e)}")
             return self._get_default_analysis()
 
-    def process_advisor_recording(self, audio_bytes: bytes, section: str) -> Optional[Dict[str, Any]]:
+    async def process_advisor_recording(self, audio_bytes: bytes, section: str) -> Optional[Dict[str, Any]]:
         """Process an advisor's recording for a specific FP report section."""
         try:
-            # Here we would normally transcribe the audio, but let's return a placeholder
-            # until we integrate with the transcription service
+            # Hier zou normaal gesproken de audio worden getranscribeerd, maar voor nu retourneren we een placeholder
+            # totdat we integreren met de transcriptieservice
             return {
                 "content": "Sectie nog te verwerken",
                 "graphs": None
@@ -86,11 +80,11 @@ class FPService:
             logger.error(f"Error processing advisor recording: {str(e)}")
             return None
 
-    def generate_fp_report(self, app_state: AppState) -> Dict[str, Any]:
+    async def generate_fp_report(self, app_state: AppState) -> Dict[str, Any]:
         """Generate the complete FP report based on all collected information."""
         try:
             return {
-                "samenvatting": self._format_section_content(app_state.fp_state.samenvatting, "samenvatting"),
+                "samenvatting": await self._format_section_content(app_state.fp_state.samenvatting, "samenvatting"),
                 "uitwerking_advies": app_state.fp_state.uitwerking_advies,
                 "huidige_situatie": app_state.fp_state.huidige_situatie,
                 "situatie_later": app_state.fp_state.situatie_later,
@@ -103,7 +97,8 @@ class FPService:
             logger.error(f"Error generating FP report: {str(e)}")
             return self._get_default_report()
 
-    def _format_section_content(self, content: str, section: str) -> str:
+    async def _format_section_content(self, content: str, section: str) -> str:
+        """Format the section content using templates."""
         section_template = FP_TEMPLATES.get(section)
         if not section_template:
             return content
@@ -119,8 +114,9 @@ class FPService:
             return content
 
     def _extract_values_from_content(self, content: str) -> Dict[str, Any]:
-        # Placeholder for extracting values from content
-        # This should be implemented based on actual content structure
+        """Extract values from the section content."""
+        # Placeholder voor het extraheren van waarden uit de inhoud
+        # Dit moet worden geïmplementeerd op basis van de werkelijke inhoudsstructuur
         return {}
 
     def _get_default_analysis(self) -> Dict[str, Any]:

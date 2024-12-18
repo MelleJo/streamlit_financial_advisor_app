@@ -1,8 +1,3 @@
-"""
-File: fp_analysis_service.py
-Enhanced Financial Planning analysis service that processes transcripts and generates reports.
-"""
-
 import logging
 import json
 from typing import Dict, Any, List, Optional, Tuple
@@ -38,23 +33,23 @@ class FPAnalysisService:
     def __init__(self, api_key: str):
         """Initialize the service with enhanced capabilities."""
         self.llm = ChatOpenAI(
-            model="gpt-4o",
+            model="gpt-4",
             temperature=0.2,
             openai_api_key=api_key
         )
         self.config = AnalysisConfig()
         
-    def analyze_input(self, transcript: str, klantprofiel: str) -> Dict[str, Any]:
+    async def analyze_input(self, transcript: str, klantprofiel: str) -> Dict[str, Any]:
         """Analyze transcript and klantprofiel to generate initial assessment."""
         try:
             # First pass: Extract key information
-            initial_analysis = self._extract_key_information(transcript, klantprofiel)
+            initial_analysis = await self._extract_key_information(transcript, klantprofiel)
             
             # Second pass: Identify missing information
             missing_info = self._identify_missing_information(initial_analysis)
             
             # Third pass: Generate section drafts
-            section_drafts = self._generate_section_drafts(initial_analysis)
+            section_drafts = await self._generate_section_drafts(initial_analysis)
             
             return {
                 "analysis": initial_analysis,
@@ -62,57 +57,57 @@ class FPAnalysisService:
                 "section_drafts": section_drafts,
                 "graphs_needed": self._determine_required_graphs(initial_analysis)
             }
-            
+                
         except Exception as e:
             logger.error(f"Error in initial analysis: {str(e)}")
             return self._get_default_analysis()
 
-    def _extract_key_information(self, transcript: str, klantprofiel: str) -> Dict[str, Any]:
+    async def _extract_key_information(self, transcript: str, klantprofiel: str) -> Dict[str, Any]:
         """Extract key information from input sources."""
         try:
             messages = [
                 SystemMessage(content="""Je bent een ervaren financieel planner die klantgesprekken analyseert.
-                Extraheer alle relevante informatie voor een financieel plan uit het transcript en klantprofiel.
-                Focus op concrete cijfers, wensen en doelstellingen."""),
+Extraheer alle relevante informatie voor een financieel plan uit het transcript en klantprofiel.
+Focus op concrete cijfers, wensen en doelstellingen."""),
                 HumanMessage(content=f"""
-                Analyseer deze input voor een financieel plan:
-                
-                TRANSCRIPT:
-                {transcript}
-                
-                KLANTPROFIEL:
-                {klantprofiel}
-                
-                Geef je antwoord in dit JSON format:
-                {{
-                    "netto_besteedbaar_inkomen": {{
-                        "huidig": "bedrag",
-                        "toelichting": "uitleg"
-                    }},
-                    "doelstellingen": ["doel1", "doel2"],
-                    "pensioen": {{
-                        "huidige_opbouw": "details",
-                        "wensen": "beschrijving"
-                    }},
-                    "risicos": {{
-                        "overlijden": "analyse",
-                        "ao": "analyse",
-                        "werkloosheid": "analyse"
-                    }},
-                    "vermogen": {{
-                        "huidig": "bedrag",
-                        "planning": "beschrijving"
-                    }}
-                }}""")
+Analyseer deze input voor een financieel plan:
+
+TRANSCRIPT:
+{transcript}
+
+KLANTPROFIEL:
+{klantprofiel}
+
+Geef je antwoord in dit JSON format:
+{{
+    "netto_besteedbaar_inkomen": {{
+        "huidig": "bedrag",
+        "toelichting": "uitleg"
+    }},
+    "doelstellingen": ["doel1", "doel2"],
+    "pensioen": {{
+        "huidige_opbouw": "details",
+        "wensen": "beschrijving"
+    }},
+    "risicos": {{
+        "overlijden": "analyse",
+        "ao": "analyse",
+        "werkloosheid": "analyse"
+    }},
+    "vermogen": {{
+        "huidig": "bedrag",
+        "planning": "beschrijving"
+    }}
+}}""")
             ]
             
-            response = self.llm.invoke(messages)
+            response = await self.llm.invoke(messages)
             return json.loads(response.content)
-            
+                
         except Exception as e:
             logger.error(f"Error extracting key information: {str(e)}")
             return {}
-
+    
     def _identify_missing_information(self, analysis: Dict[str, Any]) -> Dict[str, List[str]]:
         """Identify missing mandatory information per section."""
         missing_info = {}
@@ -142,36 +137,36 @@ class FPAnalysisService:
             return bool(value)
         return False
 
-    def _generate_section_drafts(self, analysis: Dict[str, Any]) -> Dict[str, str]:
+    async def _generate_section_drafts(self, analysis: Dict[str, Any]) -> Dict[str, str]:
         """Generate initial drafts for each report section."""
         drafts = {}
         
         for section in self.config.MANDATORY_SECTIONS.keys():
-            draft = self._generate_section_content(section, analysis)
+            draft = await self._generate_section_content(section, analysis)
             if draft:
                 drafts[section] = draft
                 
         return drafts
 
-    def _generate_section_content(self, section: str, analysis: Dict[str, Any]) -> Optional[str]:
+    async def _generate_section_content(self, section: str, analysis: Dict[str, Any]) -> Optional[str]:
         """Generate content for a specific section using standard texts as templates."""
         try:
             messages = [
                 SystemMessage(content=f"""Je bent een ervaren financieel planner die een {section} rapport schrijft.
-                Gebruik de standaard teksten als basis, maar pas ze aan op basis van de specifieke klantsituatie.
-                Zorg voor concrete cijfers en persoonlijke details waar mogelijk."""),
+Gebruik de standaard teksten als basis, maar pas ze aan op basis van de specifieke klantsituatie.
+Zorg voor concrete cijfers en persoonlijke details waar mogelijk."""),
                 HumanMessage(content=f"""
-                ANALYSE:
-                {json.dumps(analysis, ensure_ascii=False)}
-                
-                Genereer een professionele tekst voor de {section} sectie.
-                Gebruik concrete cijfers en details uit de analyse.
-                Volg de structuur van de standaard teksten maar personaliseer de inhoud.""")
+ANALYSE:
+{json.dumps(analysis, ensure_ascii=False)}
+
+Genereer een professionele tekst voor de {section} sectie.
+Gebruik concrete cijfers en details uit de analyse.
+Volg de structuur van de standaard teksten maar personaliseer de inhoud.""")
             ]
             
-            response = self.llm.invoke(messages)
+            response = await self.llm.invoke(messages)
             return response.content.strip()
-            
+                
         except Exception as e:
             logger.error(f"Error generating section content: {str(e)}")
             return None
@@ -191,7 +186,7 @@ class FPAnalysisService:
                     })
             if section_graphs:
                 graphs_needed[section] = section_graphs
-                
+                    
         return graphs_needed
 
     def _should_include_graph(self, section: str, graph_type: str, analysis: Dict[str, Any]) -> bool:
@@ -257,13 +252,13 @@ class FPAnalysisService:
             "graphs_needed": {}
         }
 
-    def generate_report(self, analysis: Dict[str, Any], app_state: Any) -> Dict[str, Any]:
+    async def generate_report(self, analysis: Dict[str, Any], app_state: Any) -> Dict[str, Any]:
         """Generate the final report based on analysis and app state."""
         try:
             report = {}
             
             for section in self.config.MANDATORY_SECTIONS.keys():
-                section_content = self._generate_final_section_content(
+                section_content = await self._generate_final_section_content(
                     section, 
                     analysis, 
                     app_state.structured_qa_history
@@ -272,7 +267,7 @@ class FPAnalysisService:
                     report[section] = section_content
             
             return report
-            
+                
         except Exception as e:
             logger.error(f"Error generating report: {str(e)}")
             return {}

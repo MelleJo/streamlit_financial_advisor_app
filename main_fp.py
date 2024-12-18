@@ -1,6 +1,6 @@
-"""Main UI flow for the Financial Planning module."""
 import streamlit as st
 import logging
+import asyncio
 from typing import Dict, Any
 from fp_integration_service import FPIntegrationService
 from fp_ui_components import (
@@ -27,7 +27,7 @@ def render_fp_module(app_state, services):
     if app_state.step == "input":
         render_input_section(app_state, services)
     elif app_state.step == "analysis":
-        render_analysis_section(app_state, fp_service)
+        asyncio.run(render_analysis_section(app_state, fp_service))
     elif app_state.step == "qa":
         render_qa_section(app_state, fp_service)
     elif app_state.step == "report":
@@ -135,13 +135,13 @@ def start_analysis(transcript, app_state):
     """Start the analysis process with the transcript."""
     app_state.fp_state.transcript = transcript
     app_state.step = "analysis"
-    st.rerun()
+    st.experimental_rerun()
 
-def render_analysis_section(app_state, fp_service):
+async def render_analysis_section(app_state, fp_service):
     """Render the analysis section."""
     try:
         with st.spinner("Analyse wordt uitgevoerd..."):
-            result = fp_service.process_input(
+            result = await fp_service.process_input(
                 app_state.fp_state.transcript,
                 app_state.fp_state.klantprofiel
             )
@@ -149,13 +149,13 @@ def render_analysis_section(app_state, fp_service):
         if result["status"] == "success":
             st.success("✅ Analyse compleet")
             
-            if result["missing_info"]:
+            if result.get("missing_info"):
                 app_state.step = "qa"
                 st.warning("Er ontbreekt nog enkele informatie")
-                st.rerun()
+                st.experimental_rerun()
             else:
                 app_state.step = "report"
-                st.rerun()
+                st.experimental_rerun()
         else:
             st.error("Er is een fout opgetreden bij de analyse")
             
@@ -176,7 +176,7 @@ def render_qa_section(app_state, fp_service):
         if not questions:
             st.success("✅ Alle benodigde informatie is verzameld")
             app_state.step = "report"
-            st.rerun()
+            st.experimental_rerun()
         
         for q in questions:
             st.markdown(f"""
@@ -189,29 +189,29 @@ def render_qa_section(app_state, fp_service):
     with qa_tabs[1]:
         # Audio recording for answers
         st.write("🎙️ Neem je antwoord op")
-        audio = services['audio_service'].record_audio()
+        audio = fp_service.audio_service.record_audio()
         if audio:
-            process_qa_audio(audio, app_state, fp_service)
+            asyncio.run(process_qa_audio(audio, app_state, fp_service))
     
     with qa_tabs[2]:
         render_fp_progress(fp_service.get_progress())
 
-def process_qa_audio(audio, app_state, fp_service):
+async def process_qa_audio(audio, app_state, fp_service):
     """Process recorded audio answers."""
     with st.spinner("Antwoord wordt verwerkt..."):
-        transcript = services['transcription_service'].transcribe(
+        transcript = fp_service.transcription_service.transcribe(
             audio['bytes'],
             mode="accurate",
             language="nl"
         )
         if transcript:
-            result = fp_service.process_qa_response(transcript)
-            if result["is_complete"]:
+            result = await fp_service.process_qa_response(transcript)
+            if result.get("is_complete"):
                 st.success("✅ Alle informatie compleet")
                 app_state.step = "report"
-                st.rerun()
+                st.experimental_rerun()
             else:
-                st.rerun()
+                st.experimental_rerun()
 
 def render_report_section(app_state, fp_service):
     """Render the final report section."""
@@ -219,7 +219,7 @@ def render_report_section(app_state, fp_service):
     
     try:
         with st.spinner("Rapport wordt gegenereerd..."):
-            report = fp_service.generate_final_report()
+            report = asyncio.run(fp_service.generate_final_report())
         
         if report["status"] == "success":
             # Render summary
