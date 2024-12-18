@@ -43,13 +43,13 @@ class FPAnalysisService:
         """Analyze transcript and klantprofiel to generate initial assessment."""
         try:
             # First pass: Extract key information
-            initial_analysis = await self._extract_key_information(transcript, klantprofiel)
+            initial_analysis = self._extract_key_information(transcript, klantprofiel)
             
             # Second pass: Identify missing information
             missing_info = self._identify_missing_information(initial_analysis)
             
             # Third pass: Generate section drafts
-            section_drafts = await self._generate_section_drafts(initial_analysis)
+            section_drafts = self._generate_section_drafts(initial_analysis)
             
             return {
                 "analysis": initial_analysis,
@@ -62,7 +62,7 @@ class FPAnalysisService:
             logger.error(f"Error in initial analysis: {str(e)}")
             return self._get_default_analysis()
 
-    async def _extract_key_information(self, transcript: str, klantprofiel: str) -> Dict[str, Any]:
+    def _extract_key_information(self, transcript: str, klantprofiel: str) -> Dict[str, Any]:
         """Extract key information from input sources."""
         try:
             messages = [
@@ -101,7 +101,7 @@ Geef je antwoord in dit JSON format:
 }}""")
             ]
             
-            response = await self.llm.invoke(messages)
+            response = self.llm.invoke(messages)
             return json.loads(response.content)
                 
         except Exception as e:
@@ -137,18 +137,18 @@ Geef je antwoord in dit JSON format:
             return bool(value)
         return False
 
-    async def _generate_section_drafts(self, analysis: Dict[str, Any]) -> Dict[str, str]:
+    def _generate_section_drafts(self, analysis: Dict[str, Any]) -> Dict[str, str]:
         """Generate initial drafts for each report section."""
         drafts = {}
         
         for section in self.config.MANDATORY_SECTIONS.keys():
-            draft = await self._generate_section_content(section, analysis)
+            draft = self._generate_section_content(section, analysis)
             if draft:
                 drafts[section] = draft
                 
         return drafts
 
-    async def _generate_section_content(self, section: str, analysis: Dict[str, Any]) -> Optional[str]:
+    def _generate_section_content(self, section: str, analysis: Dict[str, Any]) -> Optional[str]:
         """Generate content for a specific section using standard texts as templates."""
         try:
             messages = [
@@ -164,7 +164,7 @@ Gebruik concrete cijfers en details uit de analyse.
 Volg de structuur van de standaard teksten maar personaliseer de inhoud.""")
             ]
             
-            response = await self.llm.invoke(messages)
+            response = self.llm.invoke(messages)
             return response.content.strip()
                 
         except Exception as e:
@@ -258,7 +258,7 @@ Volg de structuur van de standaard teksten maar personaliseer de inhoud.""")
             report = {}
             
             for section in self.config.MANDATORY_SECTIONS.keys():
-                section_content = await self._generate_final_section_content(
+                section_content = self._generate_final_section_content(
                     section, 
                     analysis, 
                     app_state.structured_qa_history
