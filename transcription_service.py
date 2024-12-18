@@ -143,7 +143,7 @@ class TranscriptionService:
                     )
                 
                 logger.info("Successfully transcribed with Groq")
-                return response.text
+                return response  # Directly return the response
 
             finally:
                 if os.path.exists(temp_audio_file.name):
